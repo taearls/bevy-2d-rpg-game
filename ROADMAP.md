@@ -17,6 +17,15 @@ sequential (each blocked by the prior). Full design context in
 | [#7](../../issues/7) | Phase 7: HUD + battle log UI parity | 🟢 Medium | ~1 day | Open |
 | [#8](../../issues/8) | Phase 8: Debug inspector (bevy-inspector-egui) + polish | 🟢 Medium | ~0.5 day | Open |
 
+## Tooling & Quality
+
+Orthogonal to the numbered port phases — improves maintainability and tooling,
+does not block gameplay parity.
+
+| Issue | Title | Priority | Effort | Status |
+|-------|-------|----------|--------|--------|
+| [#10](../../issues/10) | Tighten clippy configuration (pedantic) and resolve violations | 🟢 Medium | ~0.5 day | Open |
+
 ## Current Sprint
 
 **Next up:** [#2 — Phase 2: Core domain logic](../../issues/2) (🔴 critical, unblocked now that #1 is done)
@@ -34,11 +43,10 @@ independently with `just ci` green.
 
 ## Issue Status Summary
 
-- **Total:** 8
-- **Done:** 1 (#1)
-- **Open:** 7 (#2–#8)
-- **Critical remaining:** 1 (#2)
+- **Port phases:** 8 total — 1 done (#1), 7 open (#2–#8); critical remaining: 1 (#2)
+- **Tooling & quality:** 1 open (#10)
 
 ## Changelog
 
+- **2026-06-13** — Added tooling task #10 (tighten clippy config) to the roadmap.
 - **2026-06-12** — Roadmap created; #1 (Phase 1 scaffold) completed.
