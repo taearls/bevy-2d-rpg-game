@@ -118,6 +118,19 @@ pub fn spawn_rng_from_environment() -> SpawnRng {
     read_seed_file().map_or_else(SpawnRng::from_entropy, SpawnRng::from_seed)
 }
 
+/// Startup system: begin loading the hero and enemy templates (stashing their
+/// handles in [`Roster`] so they stay resident) and insert the seeded
+/// [`SpawnRng`]. The seed is read here, inside a system, rather than at
+/// plugin-build time so a later phase can re-roll by re-running this without
+/// rebuilding the app.
+pub fn load_roster(mut commands: Commands, asset_server: Res<AssetServer>) {
+    commands.insert_resource(Roster {
+        hero: asset_server.load("characters/hero.character.ron"),
+        enemies: vec![asset_server.load("characters/goblin.character.ron")],
+    });
+    commands.insert_resource(spawn_rng_from_environment());
+}
+
 /// Spawn the player and a freshly rolled enemy row, plus the 2D camera.
 ///
 /// Reads the `SpawnRng` and `BattleLayout` resources and the loaded `hero` /
@@ -206,10 +219,18 @@ pub fn spawn_enemies(
 /// `hero` is the player template; `enemies` is the pool the spawn RNG rolls
 /// from. Loaded at startup so the assets are resident before [`spawn_battle`]
 /// runs.
-#[derive(Resource, Debug, Default)]
+#[derive(Resource, Debug)]
 pub struct Roster {
     pub hero: Handle<CharacterDef>,
     pub enemies: Vec<Handle<CharacterDef>>,
+}
+
+impl Roster {
+    /// Every template handle in the roster (hero first, then enemies), for
+    /// checking load state uniformly.
+    pub fn handles(&self) -> impl Iterator<Item = &Handle<CharacterDef>> {
+        std::iter::once(&self.hero).chain(self.enemies.iter())
+    }
 }
 
 #[cfg(test)]

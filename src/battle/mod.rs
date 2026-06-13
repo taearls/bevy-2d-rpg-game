@@ -6,11 +6,10 @@ pub mod rng;
 pub mod seed;
 pub mod spawn;
 
+use bevy::asset::LoadState;
 use bevy::prelude::*;
 
-use crate::characters::definition::CharacterDef;
-
-use spawn::{BattleLayout, Roster, spawn_battle, spawn_rng_from_environment};
+use spawn::{BattleLayout, Roster, load_roster, spawn_battle};
 
 /// Drives battle setup: seeds the spawn RNG, loads the character roster, and
 /// spawns the player + enemy lineup once the templates finish loading.
@@ -19,26 +18,50 @@ pub struct BattlePlugin;
 impl Plugin for BattlePlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<BattleLayout>()
-            .insert_resource(spawn_rng_from_environment())
             .add_systems(Startup, load_roster)
-            .add_systems(Update, spawn_battle.run_if(roster_ready.and(run_once)));
+            .add_systems(
+                Update,
+                (
+                    report_roster_load_failures,
+                    spawn_battle.run_if(roster_ready.and(run_once)),
+                ),
+            );
     }
 }
 
-/// Kick off loading of the hero and enemy templates and stash their handles in
-/// the [`Roster`] resource so they stay resident.
-fn load_roster(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands.insert_resource(Roster {
-        hero: asset_server.load("characters/hero.character.ron"),
-        enemies: vec![asset_server.load("characters/goblin.character.ron")],
-    });
-}
-
 /// Gate that turns true once every roster template has finished loading, so the
-/// one-shot spawn does not run against missing assets.
-fn roster_ready(roster: Option<Res<Roster>>, defs: Res<Assets<CharacterDef>>) -> bool {
+/// one-shot spawn does not run against missing or failed assets.
+fn roster_ready(roster: Option<Res<Roster>>, asset_server: Res<AssetServer>) -> bool {
     let Some(roster) = roster else {
         return false;
     };
-    defs.contains(&roster.hero) && roster.enemies.iter().all(|handle| defs.contains(handle))
+    roster
+        .handles()
+        .all(|handle| asset_server.is_loaded(handle))
+}
+
+/// Surface a roster asset that failed to load loudly and exactly once, rather
+/// than letting [`roster_ready`] silently keep the spawn dormant forever (e.g.
+/// a malformed `*.character.ron`). Runs every frame but logs each failed handle
+/// a single time, tracked by `reported`.
+fn report_roster_load_failures(
+    roster: Option<Res<Roster>>,
+    asset_server: Res<AssetServer>,
+    mut reported: Local<bool>,
+) {
+    if *reported {
+        return;
+    }
+    let Some(roster) = roster else {
+        return;
+    };
+    for handle in roster.handles() {
+        if let Some(LoadState::Failed(error)) = asset_server.get_load_state(handle.id()) {
+            error!(
+                "character template {:?} failed to load: {error}",
+                handle.path()
+            );
+            *reported = true;
+        }
+    }
 }
