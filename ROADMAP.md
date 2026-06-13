@@ -9,7 +9,7 @@ sequential (each blocked by the prior). Full design context in
 | Issue | Title | Priority | Effort | Status |
 |-------|-------|----------|--------|--------|
 | [#1](../../issues/1) | Phase 1: Project scaffold, toolchain, and assets | 🔴 Critical | ~0.5 day | ✅ Done |
-| [#2](../../issues/2) | Phase 2: Core domain logic (damage formula, seed parsing, RNG, name suffixing) | 🔴 Critical | ~0.5 day | Open |
+| [#2](../../issues/2) | Phase 2: Core domain logic (damage formula, seed parsing, RNG, name suffixing) | 🔴 Critical | ~0.5 day | ✅ Done |
 | [#3](../../issues/3) | Phase 3: Character RON assets + battle spawning | 🟡 High | ~1 day | Open |
 | [#4](../../issues/4) | Phase 4: Turn states + action menu | 🟡 High | ~1 day | Open |
 | [#5](../../issues/5) | Phase 5: Targeting, player attack, and victory | 🟡 High | ~1 day | Open |
@@ -19,10 +19,14 @@ sequential (each blocked by the prior). Full design context in
 
 ## Current Sprint
 
-**Next up:** [#2 — Phase 2: Core domain logic](../../issues/2) (🔴 critical, unblocked now that #1 is done)
+**Next up:** [#3 — Phase 3: Character RON assets + battle spawning](../../issues/3) (🟡 high, unblocked now that #2 is done)
 
 ### Recently Completed
 
+- ✅ [#2 — Phase 2: Core domain logic](../../issues/2) — character components &
+  serde defaults (100/10/5), `parse_seed`/`read_seed_file`, `SpawnRng`/`DamageRng`
+  (`ChaCha8Rng`), pure `compute_damage` (rounds per spec vs Godot's truncation),
+  and `suffix_duplicate_names`; unit tests mirror the GdUnit4 coverage, `just ci` green.
 - ✅ [#10 — Tighten clippy configuration (pedantic)](../../issues/10) — enabled
   `clippy::pedantic` with documented Bevy-friendly allow-backs; `just ci` green
   with no source-level violations.
@@ -37,11 +41,12 @@ independently with `just ci` green.
 
 ## Issue Status Summary
 
-- **Port phases:** 8 total — 1 done (#1), 7 open (#2–#8); critical remaining: 1 (#2)
+- **Port phases:** 8 total — 2 done (#1, #2), 6 open (#3–#8); critical remaining: 0
 - **Tooling & quality:** 1 total — 1 done (#10); all complete
 
 ## Changelog
 
+- **2026-06-13** — Completed Phase 2 (#2): core domain logic — damage formula, seed parsing, RNG, name suffixing.
 - **2026-06-13** — Completed tooling task #10 (tightened clippy config to pedantic).
 - **2026-06-13** — Added tooling task #10 (tighten clippy config) to the roadmap.
 - **2026-06-12** — Roadmap created; #1 (Phase 1 scaffold) completed.
