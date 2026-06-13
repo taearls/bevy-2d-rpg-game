@@ -6,6 +6,18 @@
 
 use bevy::prelude::*;
 
+/// Marks the single player-controlled character.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Player;
+
+/// Marks an enemy combatant and records its slot in the spawned row. `index`
+/// runs `0..enemy_count` left-to-right and drives layout, enemy-turn ordering,
+/// and the Godot `EnemyIndex` parity used by targeting.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Enemy {
+    pub index: usize,
+}
+
 /// Human-readable name shown in the HUD and battle log (e.g. `"Goblin A"`).
 #[derive(Component, Debug, Clone, PartialEq, Eq)]
 pub struct DisplayName(pub String);

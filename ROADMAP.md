@@ -10,7 +10,7 @@ sequential (each blocked by the prior). Full design context in
 |-------|-------|----------|--------|--------|
 | [#1](../../issues/1) | Phase 1: Project scaffold, toolchain, and assets | 🔴 Critical | ~0.5 day | ✅ Done |
 | [#2](../../issues/2) | Phase 2: Core domain logic (damage formula, seed parsing, RNG, name suffixing) | 🔴 Critical | ~0.5 day | ✅ Done |
-| [#3](../../issues/3) | Phase 3: Character RON assets + battle spawning | 🟡 High | ~1 day | Open |
+| [#3](../../issues/3) | Phase 3: Character RON assets + battle spawning | 🟡 High | ~1 day | ✅ Done |
 | [#4](../../issues/4) | Phase 4: Turn states + action menu | 🟡 High | ~1 day | Open |
 | [#5](../../issues/5) | Phase 5: Targeting, player attack, and victory | 🟡 High | ~1 day | Open |
 | [#6](../../issues/6) | Phase 6: Enemy turn, Defend resolution, and game over | 🟡 High | ~1 day | Open |
@@ -19,10 +19,15 @@ sequential (each blocked by the prior). Full design context in
 
 ## Current Sprint
 
-**Next up:** [#3 — Phase 3: Character RON assets + battle spawning](../../issues/3) (🟡 high, unblocked now that #2 is done)
+**Next up:** [#4 — Phase 4: Turn states + action menu](../../issues/4) (🟡 high, unblocked now that #3 is done)
 
 ### Recently Completed
 
+- ✅ [#3 — Phase 3: Character RON assets + battle spawning](../../issues/3) —
+  `CharacterDef` as a loadable `Asset` + `*.character.ron` `AssetLoader`,
+  `hero`/`goblin` templates, and a seeded `spawn.rs` that rolls 1–4 enemies,
+  suffixes duplicate names, and lays out player + enemy row from `BattleLayout`
+  with a `Camera2d`; headless spawn tests mirror `BattleSceneTest`, `just ci` green.
 - ✅ [#2 — Phase 2: Core domain logic](../../issues/2) — character components &
   serde defaults (100/10/5), `parse_seed`/`read_seed_file`, `SpawnRng`/`DamageRng`
   (`ChaCha8Rng`), pure `compute_damage` (rounds per spec vs Godot's truncation),
@@ -41,11 +46,12 @@ independently with `just ci` green.
 
 ## Issue Status Summary
 
-- **Port phases:** 8 total — 2 done (#1, #2), 6 open (#3–#8); critical remaining: 0
+- **Port phases:** 8 total — 3 done (#1, #2, #3), 5 open (#4–#8); critical remaining: 0
 - **Tooling & quality:** 1 total — 1 done (#10); all complete
 
 ## Changelog
 
+- **2026-06-13** — Completed Phase 3 (#3): character RON assets + `AssetLoader`, `hero`/`goblin` templates, and seeded 1–4 enemy battle spawning with layout and `Camera2d`.
 - **2026-06-13** — Completed Phase 2 (#2): core domain logic — damage formula, seed parsing, RNG, name suffixing.
 - **2026-06-13** — Completed tooling task #10 (tightened clippy config to pedantic).
 - **2026-06-13** — Added tooling task #10 (tighten clippy config) to the roadmap.

@@ -52,9 +52,11 @@ fn combat_stats_def_defaults_mirror_godot_combat_stats() {
 
 #[test]
 fn character_def_uses_stat_defaults_when_omitted() {
-    // Only the display name is supplied; stats fall back to 100/10/5.
-    let def: CharacterDef = ron::from_str(r#"(display_name: "Goblin")"#).unwrap();
+    // Name and sprite are supplied; stats fall back to 100/10/5.
+    let def: CharacterDef =
+        ron::from_str(r#"(display_name: "Goblin", sprite: "sprites/enemy.png")"#).unwrap();
     assert_eq!(def.display_name, "Goblin");
+    assert_eq!(def.sprite, "sprites/enemy.png");
     assert_eq!(def.stats, CombatStatsDef::default());
 }
 
@@ -71,6 +73,7 @@ fn combat_stats_def_fills_missing_fields_individually() {
 fn character_def_round_trips_through_ron() {
     let original = CharacterDef {
         display_name: "Hero".to_string(),
+        sprite: "sprites/hero.png".to_string(),
         stats: CombatStatsDef {
             max_health: 120,
             attack: 12,
