@@ -1,29 +1,60 @@
 //! Battle orchestration: RNG, seeding, roster naming, spawning, and (later
 //! phases) turn flow and combat resolution.
 
+pub mod menu;
+pub mod messages;
 pub mod naming;
 pub mod rng;
 pub mod seed;
 pub mod spawn;
+pub mod state;
 
 use bevy::asset::LoadState;
 use bevy::prelude::*;
 
+use menu::{
+    MenuSelection, menu_input, on_enter_player_turn, spawn_action_menu, update_menu_highlight,
+};
+use messages::{LogMessage, render_log_messages};
 use spawn::{BattleLayout, Roster, load_roster, spawn_battle};
+use state::{BattleSet, TurnPhase};
 
-/// Drives battle setup: seeds the spawn RNG, loads the character roster, and
-/// spawns the player + enemy lineup once the templates finish loading.
+/// Drives battle setup and turn flow: seeds the spawn RNG, loads the character
+/// roster, spawns the player + enemy lineup once the templates finish loading,
+/// and runs the [`TurnPhase`] state machine with its chained [`BattleSet`]s and
+/// the player action menu.
 pub struct BattlePlugin;
 
 impl Plugin for BattlePlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<BattleLayout>()
-            .add_systems(Startup, load_roster)
+            .init_resource::<MenuSelection>()
+            .init_state::<TurnPhase>()
+            .add_message::<LogMessage>()
+            // The four battle phases run in a fixed order every frame; later
+            // phases slot their systems into Resolve/Cleanup/Ui.
+            .configure_sets(
+                Update,
+                (
+                    BattleSet::Input,
+                    BattleSet::Resolve,
+                    BattleSet::Cleanup,
+                    BattleSet::Ui,
+                )
+                    .chain(),
+            )
+            .add_systems(Startup, (load_roster, spawn_action_menu))
+            .add_systems(OnEnter(TurnPhase::PlayerTurn), on_enter_player_turn)
             .add_systems(
                 Update,
                 (
                     report_roster_load_failures,
                     spawn_battle.run_if(roster_ready.and(run_once)),
+                    menu_input
+                        .in_set(BattleSet::Input)
+                        .run_if(in_state(TurnPhase::PlayerTurn)),
+                    update_menu_highlight.in_set(BattleSet::Ui),
+                    render_log_messages.in_set(BattleSet::Ui),
                 ),
             );
     }
