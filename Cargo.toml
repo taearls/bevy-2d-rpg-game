@@ -44,5 +44,3 @@ cast_precision_loss = "allow"
 cast_possible_truncation = "allow"
 # `battle::BattleSet`, `combat::CombatStats` etc. read idiomatically.
 module_name_repetitions = "allow"
-# Too noisy on pure helpers; reserve `#[must_use]` for cases that prevent real bugs.
-must_use_candidate = "allow"
