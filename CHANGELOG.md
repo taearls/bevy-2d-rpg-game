@@ -13,5 +13,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- 2026-06-13: Core domain logic — character components/definitions (serde defaults 100/10/5), `parse_seed`/`read_seed_file`, `SpawnRng`/`DamageRng` (`ChaCha8Rng`), pure `compute_damage` (rounds where Godot truncated), and `suffix_duplicate_names`, with unit tests mirroring the GdUnit4 coverage (#2)
 - 2026-06-12: Project scaffold — Bevy 0.18.1 Cargo project, 1152×648 game window, assets ported from the Godot repo (incl. Lyuba CC-BY 3.0 attribution), justfile quality gates, and a headless smoke test (#1)
 - 2026-06-13: GitHub Actions CI workflow running the `just ci` quality gate on PRs, MIT `LICENSE` file, edition 2024, and a README run/develop guide (#1 review)
