@@ -11,7 +11,7 @@ sequential (each blocked by the prior). Full design context in
 | [#1](../../issues/1) | Phase 1: Project scaffold, toolchain, and assets | 🔴 Critical | ~0.5 day | ✅ Done |
 | [#2](../../issues/2) | Phase 2: Core domain logic (damage formula, seed parsing, RNG, name suffixing) | 🔴 Critical | ~0.5 day | ✅ Done |
 | [#3](../../issues/3) | Phase 3: Character RON assets + battle spawning | 🟡 High | ~1 day | ✅ Done |
-| [#4](../../issues/4) | Phase 4: Turn states + action menu | 🟡 High | ~1 day | Open |
+| [#4](../../issues/4) | Phase 4: Turn states + action menu | 🟡 High | ~1 day | ✅ Done |
 | [#5](../../issues/5) | Phase 5: Targeting, player attack, and victory | 🟡 High | ~1 day | Open |
 | [#6](../../issues/6) | Phase 6: Enemy turn, Defend resolution, and game over | 🟡 High | ~1 day | Open |
 | [#7](../../issues/7) | Phase 7: HUD + battle log UI parity | 🟢 Medium | ~1 day | Open |
@@ -19,10 +19,17 @@ sequential (each blocked by the prior). Full design context in
 
 ## Current Sprint
 
-**Next up:** [#4 — Phase 4: Turn states + action menu](../../issues/4) (🟡 high, unblocked now that #3 is done)
+**Next up:** [#5 — Phase 5: Targeting, player attack, and victory](../../issues/5) (🟡 high, unblocked now that #4 is done)
 
 ### Recently Completed
 
+- ✅ [#4 — Phase 4: Turn states + action menu](../../issues/4) — `TurnPhase`
+  state machine + chained `BattleSet { Input, Resolve, Cleanup, Ui }`; a
+  Fight/Items/Defend/Flee action menu with a visibility-toggled yellow `>`
+  cursor, player-turn-gated wrap-around Up/Down + Enter nav, the Fight→Targeting
+  / Items·Flee→log+EnemyTurn / Defend→`Defending`+message→EnemyTurn actions, a
+  frame-buffered `LogMessage`, and `Defending` cleared `OnEnter(PlayerTurn)`;
+  headless tests mirror `ActionMenuTest`/`BattleSceneTest`, `just ci` green.
 - ✅ [#3 — Phase 3: Character RON assets + battle spawning](../../issues/3) —
   `CharacterDef` as a loadable `Asset` + `*.character.ron` `AssetLoader`,
   `hero`/`goblin` templates, and a seeded `spawn.rs` that rolls 1–4 enemies,
@@ -46,11 +53,12 @@ independently with `just ci` green.
 
 ## Issue Status Summary
 
-- **Port phases:** 8 total — 3 done (#1, #2, #3), 5 open (#4–#8); critical remaining: 0
+- **Port phases:** 8 total — 4 done (#1, #2, #3, #4), 4 open (#5–#8); critical remaining: 0
 - **Tooling & quality:** 1 total — 1 done (#10); all complete
 
 ## Changelog
 
+- **2026-06-13** — Completed Phase 4 (#4): `TurnPhase` state machine + chained `BattleSet`s, Fight/Items/Defend/Flee action menu with yellow `>` cursor and wrap-around keyboard nav, `LogMessage`, and the `Defending` marker lifecycle.
 - **2026-06-13** — Completed Phase 3 (#3): character RON assets + `AssetLoader`, `hero`/`goblin` templates, and seeded 1–4 enemy battle spawning with layout and `Camera2d`.
 - **2026-06-13** — Completed Phase 2 (#2): core domain logic — damage formula, seed parsing, RNG, name suffixing.
 - **2026-06-13** — Completed tooling task #10 (tightened clippy config to pedantic).

@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- 2026-06-13: Turn states + action menu — `TurnPhase` state machine and chained `BattleSet { Input, Resolve, Cleanup, Ui }` system sets; a bottom-anchored Fight/Items/Defend/Flee action menu with a visibility-toggled yellow `>` cursor and yellow/white highlight; player-turn-gated Up/Down (wrap) + Enter keyboard nav; Fight→Targeting, Items/Flee→log + EnemyTurn, Defend→`Defending` marker + queued message → EnemyTurn; a frame-buffered `LogMessage`; `Defending` cleared `OnEnter(PlayerTurn)`; headless tests mirror the GdUnit4 `ActionMenuTest`/`BattleSceneTest` menu cases (#4)
 - 2026-06-13: Character RON assets + battle spawning — `CharacterDef` as a loadable `Asset` with a `*.character.ron` `AssetLoader`, `hero`/`goblin` templates, and a seeded spawn that rolls 1–4 enemies, suffixes duplicate names, and lays out the player + enemy row from `BattleLayout` with a `Camera2d`; headless spawn tests mirror the GdUnit4 `BattleSceneTest` coverage (#3)
 - 2026-06-13: Core domain logic — character components/definitions (serde defaults 100/10/5), `parse_seed`/`read_seed_file`, `SpawnRng`/`DamageRng` (`ChaCha8Rng`), pure `compute_damage` (rounds where Godot truncated), and `suffix_duplicate_names`, with unit tests mirroring the GdUnit4 coverage (#2)
 - 2026-06-12: Project scaffold — Bevy 0.18.1 Cargo project, 1152×648 game window, assets ported from the Godot repo (incl. Lyuba CC-BY 3.0 attribution), justfile quality gates, and a headless smoke test (#1)

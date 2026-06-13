@@ -44,6 +44,13 @@ impl Health {
     }
 }
 
+/// Marks the player as defending for the upcoming enemy turn. Inserted by the
+/// Defend action and removed `OnEnter(PlayerTurn)`. Phase 6 halves an incoming
+/// attack's value while this marker is present, mirroring the Godot
+/// `_lastPlayerAction == PlayerAction.Defend` check before the damage formula.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Defending;
+
 /// Offensive and defensive stats feeding the damage formula.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CombatStats {
