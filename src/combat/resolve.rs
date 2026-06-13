@@ -12,8 +12,10 @@ use rand::Rng;
 
 use crate::battle::messages::LogMessage;
 use crate::battle::rng::DamageRng;
-use crate::battle::state::TurnPhase;
-use crate::characters::components::{CombatStats, DamageVariance, DisplayName, Enemy, Health};
+use crate::battle::state::{BattleResult, TurnPhase};
+use crate::characters::components::{
+    CombatStats, DamageVariance, Defending, DisplayName, Enemy, Health, Player,
+};
 
 use super::damage::compute_damage;
 use super::events::{AttackRequested, DamageDealt, Died};
@@ -38,7 +40,7 @@ pub fn apply_attacks(
     mut rng: ResMut<DamageRng>,
     mut commands: Commands,
     attackers: Query<(&CombatStats, &DamageVariance, &DisplayName)>,
-    mut targets: Query<(&mut Health, &DisplayName)>,
+    mut targets: Query<(&mut Health, &DisplayName, Has<Defending>)>,
 ) {
     for &AttackRequested { attacker, target } in attacks.read() {
         let Ok((stats, variance, attacker_name)) = attackers.get(attacker) else {
@@ -48,7 +50,7 @@ pub fn apply_attacks(
         // queries never overlap (an entity can't be both in this resolver).
         let attacker_name = attacker_name.0.clone();
 
-        let Ok((mut health, target_name)) = targets.get_mut(target) else {
+        let Ok((mut health, target_name, defending)) = targets.get_mut(target) else {
             continue;
         };
         if !health.is_alive() {
@@ -56,7 +58,16 @@ pub fn apply_attacks(
         }
 
         let roll = rng.0.random_range(variance.min..=variance.max);
-        let amount = compute_damage(stats.attack, stats.defense, roll);
+        // A defending target halves the attacker's effective attack *value*
+        // before the formula (Godot's `_lastPlayerAction == Defend` check),
+        // lasting the whole enemy turn until `Defending` clears on the next
+        // `OnEnter(PlayerTurn)`.
+        let attack_value = if defending {
+            stats.attack / 2
+        } else {
+            stats.attack
+        };
+        let amount = compute_damage(attack_value, stats.defense, roll);
         health.current = (health.current - amount).clamp(0, health.max);
 
         let target_name = target_name.0.clone();
@@ -89,25 +100,39 @@ pub fn on_died_hide_sprite(died: On<Died>, mut visibility: Query<&mut Visibility
     }
 }
 
-/// `BattleSet::Cleanup`: end the battle when every enemy is dead, otherwise hand
-/// the turn to the enemies.
+/// `BattleSet::Cleanup`: end the battle on a decisive outcome, otherwise let the
+/// turn flow continue.
 ///
-/// Runs only the frame combat was resolved (gated on the caller to
-/// [`Targeting`](TurnPhase::Targeting) exit in Phase 5). If no enemy has positive
-/// health, writes "Victory!" and moves to [`BattleOver`](TurnPhase::BattleOver);
-/// otherwise advances to [`EnemyTurn`](TurnPhase::EnemyTurn). Mirrors the Godot
-/// `CheckBattleEnd` victory branch (the defeat branch arrives with the enemy turn
-/// in Phase 6).
+/// Runs the frame an attack landed (gated on [`DamageDealt`] by the caller). A
+/// player defeat takes priority — "Game Over!", [`BattleResult`] `victory: false`,
+/// and [`BattleOver`](TurnPhase::BattleOver) — and, because the enemy-turn tick
+/// is gated `in_state(EnemyTurn)`, flipping to `BattleOver` here is exactly what
+/// stops the rest of the enemy queue. Otherwise, every enemy dead is "Victory!",
+/// `victory: true`, and `BattleOver`. With neither side decided the battle simply
+/// continues: the placeholder transition the acting phase already queued
+/// (`Targeting`→`EnemyTurn`, or the enemy turn staying put) stands untouched.
+/// Mirrors Godot `CheckBattleEnd` (victory and defeat branches).
 pub fn check_battle_end(
     enemies: Query<&Health, With<Enemy>>,
+    player: Query<&Health, With<Player>>,
     mut next_state: ResMut<NextState<TurnPhase>>,
     mut log: MessageWriter<LogMessage>,
+    mut commands: Commands,
 ) {
-    let all_dead = enemies.iter().all(|health| !health.is_alive());
-    if all_dead {
-        log.write(LogMessage::new("Victory!"));
+    let player_dead = player
+        .iter()
+        .next()
+        .is_some_and(|health| !health.is_alive());
+    if player_dead {
+        log.write(LogMessage::new("Game Over!"));
+        commands.insert_resource(BattleResult { victory: false });
         next_state.set(TurnPhase::BattleOver);
-    } else {
-        next_state.set(TurnPhase::EnemyTurn);
+        return;
+    }
+
+    if enemies.iter().all(|health| !health.is_alive()) {
+        log.write(LogMessage::new("Victory!"));
+        commands.insert_resource(BattleResult { victory: true });
+        next_state.set(TurnPhase::BattleOver);
     }
 }

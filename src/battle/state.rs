@@ -11,8 +11,9 @@ use bevy::prelude::*;
 /// - [`PlayerTurn`](Self::PlayerTurn) (default): the action menu accepts
 ///   keyboard navigation and confirmation.
 /// - [`Targeting`](Self::Targeting): Fight was chosen; the player is picking an
-///   enemy (player attack lands in Phase 5).
-/// - [`EnemyTurn`](Self::EnemyTurn): enemies act in index order (Phase 6).
+///   enemy.
+/// - [`EnemyTurn`](Self::EnemyTurn): the alive enemies attack in index order,
+///   paced by the [`EnemyTurnQueue`](super::enemy_turn::EnemyTurnQueue).
 /// - [`BattleOver`](Self::BattleOver): victory or defeat; all input is disabled.
 #[derive(States, Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 pub enum TurnPhase {
@@ -23,12 +24,25 @@ pub enum TurnPhase {
     BattleOver,
 }
 
+/// The outcome of a finished battle, inserted when the battle reaches
+/// [`BattleOver`](TurnPhase::BattleOver).
+///
+/// `victory` is `true` when every enemy fell ("Victory!") and `false` on a
+/// player defeat ("Game Over!"). Kept as a resource — separate from the unit
+/// [`BattleOver`](TurnPhase::BattleOver) state — so the end-screen / HUD
+/// (Phase 7) can read the result without the state machine needing a data
+/// variant. Mirrors the Godot `BattleResult`.
+#[derive(Resource, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BattleResult {
+    pub victory: bool,
+}
+
 /// The four phases every battle frame runs through, chained in `Update` so they
 /// execute in a deterministic order regardless of system insertion order.
 ///
 /// - [`Input`](Self::Input): keyboard nav, action confirmation, enemy-turn timer.
-/// - [`Resolve`](Self::Resolve): apply queued attacks and mutate health (Phase 5/6).
-/// - [`Cleanup`](Self::Cleanup): check for battle end (Phase 6).
+/// - [`Resolve`](Self::Resolve): apply queued attacks and mutate health.
+/// - [`Cleanup`](Self::Cleanup): check for battle end (victory / defeat).
 /// - [`Ui`](Self::Ui): redraw cursor, HP bars, and the battle log from world state.
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum BattleSet {

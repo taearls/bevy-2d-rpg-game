@@ -1,6 +1,7 @@
 //! Battle orchestration: RNG, seeding, roster naming, spawning, turn flow,
 //! the action menu, enemy targeting, and combat resolution.
 
+pub mod enemy_turn;
 pub mod menu;
 pub mod messages;
 pub mod naming;
@@ -14,6 +15,7 @@ use bevy::asset::LoadState;
 use bevy::prelude::*;
 use bevy::sprite::{SpritePickingMode, SpritePickingSettings};
 
+use enemy_turn::{EnemyTurnQueue, on_enter_enemy_turn, tick_enemy_turn};
 use menu::{
     MenuSelection, menu_input, on_enter_player_turn, spawn_action_menu, update_menu_highlight,
 };
@@ -38,6 +40,9 @@ impl Plugin for BattlePlugin {
         app.init_resource::<BattleLayout>()
             .init_resource::<MenuSelection>()
             .init_resource::<SelectedTarget>()
+            // Always present (defaulted) so the `in_state(EnemyTurn)`-gated tick
+            // never races the `OnEnter(EnemyTurn)` insertion; rebuilt each turn.
+            .init_resource::<EnemyTurnQueue>()
             // Full-rectangle sprite hits, matching the Godot click areas, instead
             // of the default alpha-threshold test.
             .insert_resource(SpritePickingSettings {
@@ -69,6 +74,7 @@ impl Plugin for BattlePlugin {
             .add_systems(OnEnter(TurnPhase::PlayerTurn), on_enter_player_turn)
             .add_systems(OnEnter(TurnPhase::Targeting), on_enter_targeting)
             .add_systems(OnExit(TurnPhase::Targeting), on_exit_targeting)
+            .add_systems(OnEnter(TurnPhase::EnemyTurn), on_enter_enemy_turn)
             .add_systems(
                 Update,
                 (
@@ -80,6 +86,9 @@ impl Plugin for BattlePlugin {
                     targeting_input
                         .in_set(BattleSet::Input)
                         .run_if(in_state(TurnPhase::Targeting)),
+                    tick_enemy_turn
+                        .in_set(BattleSet::Input)
+                        .run_if(in_state(TurnPhase::EnemyTurn)),
                     apply_attacks.in_set(BattleSet::Resolve),
                     // Decide the battle's fate only on the frame an attack
                     // actually landed. Gating on `DamageDealt` (written by
