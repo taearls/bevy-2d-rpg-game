@@ -82,8 +82,10 @@ fn variance_scales_within_the_spread() {
 
 #[test]
 fn rounding_diverges_from_godot_truncation() {
-    // base 7 * 1.2 = 8.4 → truncation (Godot) = 8, rounding (this port) = 8.
+    // Control: base 7 * 1.2 = 8.4 → both truncation and rounding give 8.
     assert_eq!(compute_damage(17, 10, 1.2), 8);
-    // base 5 * 1.1 = 5.5 → truncation would give 5; we round to 6.
+    // Divergent: base 5 * 1.1 = 5.5 → truncation (Godot) gives 5; we round to 6.
     assert_eq!(compute_damage(15, 10, 1.1), 6);
+    // Divergent: base 6 * 1.15 = 6.9 → truncation gives 6; we round to 7.
+    assert_eq!(compute_damage(16, 10, 1.15), 7);
 }
