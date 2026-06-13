@@ -1,0 +1,10 @@
+// Hero player template — parity with the Godot `hero_stats.tres`.
+(
+    display_name: "Hero",
+    sprite: "sprites/hero.png",
+    stats: (
+        max_health: 120,
+        attack: 12,
+        defense: 8,
+    ),
+)

@@ -1,10 +1,13 @@
 //! Serde-deserializable character templates.
 //!
-//! These are the data-driven roster definitions loaded from RON assets in
-//! Phase 3. Defining them as plain structs here keeps the domain layer testable
-//! before the asset pipeline exists. Field defaults mirror the Godot
-//! `CombatStats.cs` exports (`MaxHealth` 100, `Attack` 10, `Defense` 5).
+//! These are the data-driven roster definitions loaded from RON assets
+//! (`assets/characters/*.character.ron`) via the [`asset_loader`]. Field
+//! defaults mirror the Godot `CombatStats.cs` exports (`MaxHealth` 100,
+//! `Attack` 10, `Defense` 5).
+//!
+//! [`asset_loader`]: super::asset_loader
 
+use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
 /// Combat stat block for a character template. Any field omitted from the RON
@@ -41,10 +44,14 @@ fn default_defense() -> i32 {
     5
 }
 
-/// A named, data-driven character template (the player or an enemy archetype).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+/// A named, data-driven character template (the player or an enemy archetype),
+/// loaded from a `*.character.ron` asset. `sprite` is the asset path of the
+/// character's texture, relative to the `assets/` root (e.g.
+/// `"sprites/hero.png"`), mirroring the Godot `CharacterData.Sprite` export.
+#[derive(Asset, TypePath, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CharacterDef {
     pub display_name: String,
+    pub sprite: String,
     #[serde(default)]
     pub stats: CombatStatsDef,
 }
