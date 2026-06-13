@@ -1,0 +1,31 @@
+[package]
+name = "bevy-2d-rpg-game"
+version = "0.1.0"
+edition = "2021"
+description = "Turn-based RPG battle vertical slice — Bevy port of the Godot 4.6 C# original"
+license = "MIT"
+
+[lib]
+name = "bevy_2d_rpg_game"
+path = "src/lib.rs"
+
+[dependencies]
+bevy = "0.18.1"
+rand = "0.9"
+rand_chacha = "0.9"
+serde = { version = "1", features = ["derive"] }
+ron = "0.12"
+bevy-inspector-egui = { version = "0.36", optional = true }
+
+[features]
+debug-inspector = ["dep:bevy-inspector-egui"]
+
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3
+
+[lints.clippy]
+type_complexity = "allow"
+too_many_arguments = "allow"
