@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- 2026-06-13: Enabled `clippy::pedantic` with documented Bevy-friendly allow-backs in `Cargo.toml`; `just ci` green with no source-level violations (#10)
+
 ### Added
 
 - 2026-06-12: Project scaffold — Bevy 0.18.1 Cargo project, 1152×648 game window, assets ported from the Godot repo (incl. Lyuba CC-BY 3.0 attribution), justfile quality gates, and a headless smoke test (#1)
