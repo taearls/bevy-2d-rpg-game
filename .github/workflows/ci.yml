@@ -1,9 +1,9 @@
 name: CI
 
+# CI is temporarily manual-only — trigger from the Actions tab when needed.
+# Restore automatic runs by re-adding `push` / `pull_request` triggers.
 on:
-  push:
-    branches: [main]
-  pull_request:
+  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
