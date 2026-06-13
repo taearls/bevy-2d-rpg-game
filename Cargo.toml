@@ -27,5 +27,20 @@ opt-level = 1
 opt-level = 3
 
 [lints.clippy]
+# Opt into clippy::pedantic for maintainability/style enforcement. priority = -1
+# lets the individual allow-backs below (default priority 0) override the group.
+pedantic = { level = "warn", priority = -1 }
+
+# Bevy ECS makes these unavoidable; Bevy's own crates allow them too.
 type_complexity = "allow"
 too_many_arguments = "allow"
+
+# Bevy-hostile pedantic lints — each fires on idiomatic Bevy/game code by design:
+# Bevy systems take Res<T> / Query<T> / Commands by value as part of the API.
+needless_pass_by_value = "allow"
+# Intentional in HP-fraction math (`current as f32 / max as f32`).
+cast_precision_loss = "allow"
+# Deliberate, bounded usize/u32 index casts.
+cast_possible_truncation = "allow"
+# `battle::BattleSet`, `combat::CombatStats` etc. read idiomatically.
+module_name_repetitions = "allow"
