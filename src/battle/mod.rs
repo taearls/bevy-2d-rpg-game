@@ -1,5 +1,5 @@
-//! Battle orchestration: RNG, seeding, roster naming, spawning, and (later
-//! phases) turn flow and combat resolution.
+//! Battle orchestration: RNG, seeding, roster naming, spawning, turn flow,
+//! the action menu, enemy targeting, and combat resolution.
 
 pub mod menu;
 pub mod messages;
@@ -8,31 +8,50 @@ pub mod rng;
 pub mod seed;
 pub mod spawn;
 pub mod state;
+pub mod targeting;
 
 use bevy::asset::LoadState;
 use bevy::prelude::*;
+use bevy::sprite::{SpritePickingMode, SpritePickingSettings};
 
 use menu::{
     MenuSelection, menu_input, on_enter_player_turn, spawn_action_menu, update_menu_highlight,
 };
 use messages::{LogMessage, render_log_messages};
-use spawn::{BattleLayout, Roster, load_roster, spawn_battle};
+use spawn::{BattleLayout, Roster, load_roster, spawn_battle, spawn_selection_indicator};
 use state::{BattleSet, TurnPhase};
+use targeting::{
+    SelectedTarget, on_enter_targeting, on_exit_targeting, targeting_input, update_target_visuals,
+};
+
+use crate::combat::events::{AttackRequested, DamageDealt};
+use crate::combat::resolve::{apply_attacks, check_battle_end, on_died_hide_sprite};
 
 /// Drives battle setup and turn flow: seeds the spawn RNG, loads the character
 /// roster, spawns the player + enemy lineup once the templates finish loading,
-/// and runs the [`TurnPhase`] state machine with its chained [`BattleSet`]s and
-/// the player action menu.
+/// and runs the [`TurnPhase`] state machine with its chained [`BattleSet`]s, the
+/// player action menu, enemy targeting, and combat resolution.
 pub struct BattlePlugin;
 
 impl Plugin for BattlePlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<BattleLayout>()
             .init_resource::<MenuSelection>()
+            .init_resource::<SelectedTarget>()
+            // Full-rectangle sprite hits, matching the Godot click areas, instead
+            // of the default alpha-threshold test.
+            .insert_resource(SpritePickingSettings {
+                picking_mode: SpritePickingMode::BoundingBox,
+                ..default()
+            })
             .init_state::<TurnPhase>()
             .add_message::<LogMessage>()
-            // The four battle phases run in a fixed order every frame; later
-            // phases slot their systems into Resolve/Cleanup/Ui.
+            .add_message::<AttackRequested>()
+            .add_message::<DamageDealt>()
+            .add_observer(on_died_hide_sprite)
+            // The four battle phases run in a fixed order every frame: input
+            // queues attacks, Resolve applies them, Cleanup decides the battle's
+            // fate, Ui redraws from the resulting world state.
             .configure_sets(
                 Update,
                 (
@@ -43,8 +62,13 @@ impl Plugin for BattlePlugin {
                 )
                     .chain(),
             )
-            .add_systems(Startup, (load_roster, spawn_action_menu))
+            .add_systems(
+                Startup,
+                (load_roster, spawn_action_menu, spawn_selection_indicator),
+            )
             .add_systems(OnEnter(TurnPhase::PlayerTurn), on_enter_player_turn)
+            .add_systems(OnEnter(TurnPhase::Targeting), on_enter_targeting)
+            .add_systems(OnExit(TurnPhase::Targeting), on_exit_targeting)
             .add_systems(
                 Update,
                 (
@@ -53,7 +77,20 @@ impl Plugin for BattlePlugin {
                     menu_input
                         .in_set(BattleSet::Input)
                         .run_if(in_state(TurnPhase::PlayerTurn)),
+                    targeting_input
+                        .in_set(BattleSet::Input)
+                        .run_if(in_state(TurnPhase::Targeting)),
+                    apply_attacks.in_set(BattleSet::Resolve),
+                    // Decide the battle's fate only on the frame an attack
+                    // actually landed. Gating on `DamageDealt` (written by
+                    // `apply_attacks`) rather than on the `Targeting` state keeps
+                    // a *cancelled* targeting (Escape → PlayerTurn, no attack)
+                    // from being overridden into EnemyTurn/BattleOver.
+                    check_battle_end
+                        .in_set(BattleSet::Cleanup)
+                        .run_if(on_message::<DamageDealt>),
                     update_menu_highlight.in_set(BattleSet::Ui),
+                    update_target_visuals.in_set(BattleSet::Ui),
                     render_log_messages.in_set(BattleSet::Ui),
                 ),
             );

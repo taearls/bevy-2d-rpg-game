@@ -1,8 +1,7 @@
 //! Pure combat math.
 //!
 //! The damage formula is isolated here so it can be unit-tested without an ECS
-//! world. Spawning, health mutation, and the `Died` observer that consume it
-//! arrive in later phases.
+//! world. The resolution system that consumes it lives in [`super::resolve`].
 
 /// Compute the damage a single attack deals.
 ///

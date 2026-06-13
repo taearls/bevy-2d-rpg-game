@@ -18,8 +18,9 @@ use crate::characters::components::{
 use crate::characters::definition::CharacterDef;
 
 use super::naming::suffix_duplicate_names;
-use super::rng::SpawnRng;
+use super::rng::{DamageRng, SpawnRng};
 use super::seed::read_seed_file;
+use super::targeting::{SelectionIndicator, on_enemy_clicked};
 
 /// Maximum number of enemies a battle can spawn. The count is rolled inclusively
 /// in `1..=MAX_ENEMIES`, matching Godot `RandiRange(1, MaxEnemies)`.
@@ -129,6 +130,10 @@ pub fn load_roster(mut commands: Commands, asset_server: Res<AssetServer>) {
         enemies: vec![asset_server.load("characters/goblin.character.ron")],
     });
     commands.insert_resource(spawn_rng_from_environment());
+    // Damage variance is entropy-seeded for live play; headless tests insert a
+    // fixed-seed `DamageRng` so the variance roll — and thus the damage — is
+    // deterministic.
+    commands.insert_resource(DamageRng::from_entropy());
 }
 
 /// Spawn the player and a freshly rolled enemy row, plus the 2D camera.
@@ -199,19 +204,53 @@ pub fn spawn_enemies(
     entries: &[RosterEntry],
 ) {
     for (index, entry) in entries.iter().enumerate() {
-        commands.spawn((
-            Enemy { index },
-            Sprite::from_image(asset_server.load(entry.def.sprite.clone())),
-            Transform::from_translation(layout.enemy_position(index).extend(0.0)),
-            DisplayName(entry.display_name.clone()),
-            Health::full(entry.def.stats.max_health),
-            CombatStats {
-                attack: entry.def.stats.attack,
-                defense: entry.def.stats.defense,
-            },
-            DamageVariance::default(),
-        ));
+        commands
+            .spawn((
+                Enemy { index },
+                Sprite::from_image(asset_server.load(entry.def.sprite.clone())),
+                Transform::from_translation(layout.enemy_position(index).extend(0.0)),
+                DisplayName(entry.display_name.clone()),
+                Health::full(entry.def.stats.max_health),
+                CombatStats {
+                    attack: entry.def.stats.attack,
+                    defense: entry.def.stats.defense,
+                },
+                DamageVariance::default(),
+                // Clickable for mouse targeting; the observer turns a click into
+                // a select-and-confirm during the `Targeting` phase.
+                Pickable::default(),
+            ))
+            .observe(on_enemy_clicked);
     }
+}
+
+/// Startup system: spawn the single, reusable selection indicator — a yellow
+/// downward-pointing `Mesh2d(Triangle2d)` — hidden until targeting parks it over
+/// an enemy.
+///
+/// One long-lived entity rather than a per-selection spawn:
+/// [`update_target_visuals`](super::targeting::update_target_visuals) moves it
+/// and toggles its visibility. The triangle points down so its lower vertex
+/// indicates the enemy beneath it.
+pub fn spawn_selection_indicator(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+) {
+    // A downward-pointing triangle: apex below, base above.
+    let triangle = Triangle2d::new(
+        Vec2::new(0.0, -16.0),
+        Vec2::new(-14.0, 16.0),
+        Vec2::new(14.0, 16.0),
+    );
+    commands.spawn((
+        SelectionIndicator,
+        Mesh2d(meshes.add(triangle)),
+        MeshMaterial2d(materials.add(Color::srgb(1.0, 1.0, 0.0))),
+        Transform::default(),
+        // Revealed by `update_target_visuals` once an enemy is targeted.
+        Visibility::Hidden,
+    ));
 }
 
 /// Handles to the loaded character templates, kept alive for the battle.

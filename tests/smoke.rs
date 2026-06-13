@@ -4,6 +4,7 @@
 use bevy::asset::AssetPlugin;
 use bevy::input::InputPlugin;
 use bevy::prelude::*;
+use bevy::sprite_render::ColorMaterial;
 use bevy::state::app::StatesPlugin;
 use bevy_2d_rpg_game::game::GamePlugin;
 
@@ -26,7 +27,11 @@ fn app_builds_and_updates_headless() {
     ))
     // `Image` must be registered so a sprite handle can be minted if the roster
     // load happens to finish within this frame — without the renderer, nothing
-    // else pulls the type in.
-    .init_asset::<Image>();
+    // else pulls the type in. `Mesh` and `ColorMaterial` back the Phase 5
+    // selection-indicator entity spawned at startup; `DefaultPlugins` registers
+    // them via the 2D mesh/material plugins, so they must be added by hand here.
+    .init_asset::<Image>()
+    .init_asset::<Mesh>()
+    .init_asset::<ColorMaterial>();
     app.update();
 }
