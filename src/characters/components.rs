@@ -51,6 +51,14 @@ impl Health {
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Defending;
 
+/// Marks the enemy currently under the targeting cursor. Drives the yellow
+/// sprite tint and is the one entity the selection indicator sits above. Exactly
+/// one alive enemy carries it while in [`Targeting`](crate::battle::state::TurnPhase::Targeting);
+/// it is removed when targeting ends (confirm or cancel). Mirrors the Godot
+/// `_selectedEnemy` highlight.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Targeted;
+
 /// Offensive and defensive stats feeding the damage formula.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CombatStats {

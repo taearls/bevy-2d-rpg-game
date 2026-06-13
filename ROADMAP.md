@@ -12,17 +12,28 @@ sequential (each blocked by the prior). Full design context in
 | [#2](../../issues/2) | Phase 2: Core domain logic (damage formula, seed parsing, RNG, name suffixing) | 🔴 Critical | ~0.5 day | ✅ Done |
 | [#3](../../issues/3) | Phase 3: Character RON assets + battle spawning | 🟡 High | ~1 day | ✅ Done |
 | [#4](../../issues/4) | Phase 4: Turn states + action menu | 🟡 High | ~1 day | ✅ Done |
-| [#5](../../issues/5) | Phase 5: Targeting, player attack, and victory | 🟡 High | ~1 day | Open |
+| [#5](../../issues/5) | Phase 5: Targeting, player attack, and victory | 🟡 High | ~1 day | ✅ Done |
 | [#6](../../issues/6) | Phase 6: Enemy turn, Defend resolution, and game over | 🟡 High | ~1 day | Open |
 | [#7](../../issues/7) | Phase 7: HUD + battle log UI parity | 🟢 Medium | ~1 day | Open |
 | [#8](../../issues/8) | Phase 8: Debug inspector (bevy-inspector-egui) + polish | 🟢 Medium | ~0.5 day | Open |
 
 ## Current Sprint
 
-**Next up:** [#5 — Phase 5: Targeting, player attack, and victory](../../issues/5) (🟡 high, unblocked now that #4 is done)
+**Next up:** [#6 — Phase 6: Enemy turn, Defend resolution, and game over](../../issues/6) (🟡 high, unblocked now that #5 is done)
 
 ### Recently Completed
 
+- ✅ [#5 — Phase 5: Targeting, player attack, and victory](../../issues/5) —
+  `Targeting`-phase cursor over alive enemies (Left/Right cycle with wrap,
+  Escape cancels, Enter confirms), `Targeted` yellow tint + a `Mesh2d(Triangle2d)`
+  `SelectionIndicator`; `AttackRequested`/`DamageDealt` messages + a `Died`
+  `EntityEvent` (observer hides the sprite); `combat::apply_attacks` (variance
+  from `DamageRng`, `Health` mutation, log lines) and `check_battle_end`
+  ("Victory!" → `BattleOver`, else `EnemyTurn`); `Pickable` enemies with a
+  per-entity `On<Pointer<Click>>` observer delegating to a pure
+  `try_select_target` (`SpritePickingMode::BoundingBox`); headless
+  `battle_combat`/`targeting` tests mirror `BattleEventsTest`/`BattleSceneTest`,
+  `just ci` green.
 - ✅ [#4 — Phase 4: Turn states + action menu](../../issues/4) — `TurnPhase`
   state machine + chained `BattleSet { Input, Resolve, Cleanup, Ui }`; a
   Fight/Items/Defend/Flee action menu with a visibility-toggled yellow `>`
@@ -53,11 +64,12 @@ independently with `just ci` green.
 
 ## Issue Status Summary
 
-- **Port phases:** 8 total — 4 done (#1, #2, #3, #4), 4 open (#5–#8); critical remaining: 0
+- **Port phases:** 8 total — 5 done (#1, #2, #3, #4, #5), 3 open (#6–#8); critical remaining: 0
 - **Tooling & quality:** 1 total — 1 done (#10); all complete
 
 ## Changelog
 
+- **2026-06-13** — Completed Phase 5 (#5): targeting cursor over alive enemies (cycle/wrap/cancel/confirm), `Targeted` tint + `Mesh2d(Triangle2d)` selection indicator, `AttackRequested`/`DamageDealt` messages + `Died` observer, `apply_attacks` + `check_battle_end` (Victory!), and click-to-attack sprite picking.
 - **2026-06-13** — Completed Phase 4 (#4): `TurnPhase` state machine + chained `BattleSet`s, Fight/Items/Defend/Flee action menu with yellow `>` cursor and wrap-around keyboard nav, `LogMessage`, and the `Defending` marker lifecycle.
 - **2026-06-13** — Completed Phase 3 (#3): character RON assets + `AssetLoader`, `hero`/`goblin` templates, and seeded 1–4 enemy battle spawning with layout and `Camera2d`.
 - **2026-06-13** — Completed Phase 2 (#2): core domain logic — damage formula, seed parsing, RNG, name suffixing.
