@@ -28,9 +28,13 @@ use targeting::{
 };
 use ui::BattleUiPlugin;
 
+use crate::characters::components::{CombatStats, DamageVariance, Health};
+// Marker / label components — only registered for reflection under the debug
+// inspector, so their import is gated to the same feature to keep a default
+// build free of unused-import warnings.
+#[cfg(feature = "debug-inspector")]
 use crate::characters::components::{
-    CombatStats, DamageVariance, Defending, DisplayName, Enemy, EnemyHealthBar, Health, Player,
-    Targeted,
+    Defending, DisplayName, Enemy, EnemyHealthBar, Player, Targeted,
 };
 use crate::combat::events::{AttackRequested, DamageDealt};
 use crate::combat::resolve::{apply_attacks, check_battle_end, on_died_hide_sprite};
@@ -48,20 +52,12 @@ impl Plugin for BattlePlugin {
             // reflection so the Phase 8 inspector can edit them live. Registered
             // here in the plugin that wires these types into the battle (the
             // `UiConfig` knob is registered alongside in `BattleUiPlugin`).
-            // Registration is cheap and feature-independent — only the inspector
-            // UI is gated.
+            // These tuning-knob types stay feature-independent; the inspector-only
+            // marker components are gated to `debug-inspector` below.
             .register_type::<BattleLayout>()
             .register_type::<Health>()
             .register_type::<CombatStats>()
             .register_type::<DamageVariance>()
-            // The remaining battle components, so every component on a combatant
-            // expands in the debug inspector rather than showing opaque.
-            .register_type::<Player>()
-            .register_type::<Enemy>()
-            .register_type::<DisplayName>()
-            .register_type::<Defending>()
-            .register_type::<Targeted>()
-            .register_type::<EnemyHealthBar>()
             .init_resource::<BattleLayout>()
             .init_resource::<MenuSelection>()
             .init_resource::<SelectedTarget>()
@@ -127,6 +123,18 @@ impl Plugin for BattlePlugin {
                     render_log_messages.in_set(BattleSet::Ui),
                 ),
             );
+
+        // The marker / label components carry no tuning knobs — they're only
+        // worth reflecting so the debug inspector can expand every component on a
+        // combatant instead of showing them opaque. Gated on the feature so a
+        // release build doesn't register reflection it never reads.
+        #[cfg(feature = "debug-inspector")]
+        app.register_type::<Player>()
+            .register_type::<Enemy>()
+            .register_type::<DisplayName>()
+            .register_type::<Defending>()
+            .register_type::<Targeted>()
+            .register_type::<EnemyHealthBar>();
     }
 }
 

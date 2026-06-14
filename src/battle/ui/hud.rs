@@ -10,6 +10,8 @@
 //! ([`player_name_text`], [`hp_fill_fraction`]) are factored out so the
 //! `BattleUITest` parity cases assert text and percentages without a renderer.
 
+use std::collections::HashMap;
+
 use bevy::prelude::*;
 
 use crate::characters::components::{DisplayName, Enemy, EnemyHealthBar, Health, Player, Targeted};
@@ -212,8 +214,10 @@ pub fn refresh_enemy_labels(
 /// on-screen label tracks it live.
 ///
 /// The label is a `Text2d` child carrying [`EnemyNameLabel`]`(owner)`; this maps
-/// each changed enemy to its label by `owner` and rewrites the text. Gated on
-/// `Changed<DisplayName>`, so a steady state does no work.
+/// each changed enemy to its new name, then walks the labels once and rewrites
+/// any whose owner changed. Gated on `Changed<DisplayName>`, so a steady state
+/// does no work; the single label pass keeps it linear rather than
+/// changed-enemies × labels.
 pub fn sync_enemy_label_text(
     enemies: Query<(Entity, &DisplayName), (With<Enemy>, Changed<DisplayName>)>,
     mut labels: Query<(&EnemyNameLabel, &mut Text2d)>,
@@ -221,11 +225,14 @@ pub fn sync_enemy_label_text(
     if enemies.is_empty() {
         return;
     }
-    for (owner, DisplayName(name)) in &enemies {
-        for (EnemyNameLabel(label_owner), mut text) in &mut labels {
-            if *label_owner == owner {
-                text.0.clone_from(name);
-            }
+    let renamed: HashMap<Entity, &str> = enemies
+        .iter()
+        .map(|(owner, DisplayName(name))| (owner, name.as_str()))
+        .collect();
+    for (EnemyNameLabel(owner), mut text) in &mut labels {
+        if let Some(name) = renamed.get(owner) {
+            text.0.clear();
+            text.0.push_str(name);
         }
     }
 }
