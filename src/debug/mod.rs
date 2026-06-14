@@ -5,8 +5,10 @@
 //! `EguiPlugin` plus a small picking layer: right-click (or Control+left-click on
 //! a trackpad) any sprite in the viewport and an egui window shows just that
 //! entity's components (via `bevy-inspector-egui`'s `ui_for_entity`). The panel is
-//! sticky — it stays on the last-clicked entity until you click another or press
-//! Escape. Every Godot `[Export(Range)]` tuning knob (`BattleLayout`, `UiConfig`,
+//! titled with the entity's `DisplayName` when it has one ("Goblin A", "Hero"),
+//! falling back to the raw entity id. It is sticky — it stays on the last-clicked
+//! entity until you click another or press Escape. Every Godot `[Export(Range)]`
+//! tuning knob (`BattleLayout`, `UiConfig`,
 //! `DamageVariance`, `Health`, `CombatStats`, …) is registered for reflection by
 //! its owning plugin, so the per-entity panel can edit those values live.
 //!
@@ -20,6 +22,8 @@ use bevy_inspector_egui::bevy_egui::{
     EguiContext, EguiPlugin, EguiPrimaryContextPass, PrimaryEguiContext,
 };
 use bevy_inspector_egui::bevy_inspector;
+
+use crate::characters::components::DisplayName;
 
 /// The entity whose component inspector is currently shown, or `None` when the
 /// panel is dismissed. Set by a right-click (or Control+left-click) on a sprite,
@@ -125,6 +129,12 @@ fn inspected_entity_ui(world: &mut World) {
         return;
     }
 
+    // Prefer the entity's `DisplayName` (e.g. "Goblin A", "Hero") as the panel
+    // title, falling back to the raw entity id for unnamed entities.
+    let title = world
+        .get::<DisplayName>(entity)
+        .map_or_else(|| format!("Inspect {entity}"), |name| name.0.clone());
+
     let egui_context = world
         .query_filtered::<&mut EguiContext, With<PrimaryEguiContext>>()
         .single(world);
@@ -134,7 +144,10 @@ fn inspected_entity_ui(world: &mut World) {
     let mut egui_context = egui_context.clone();
 
     let mut open = true;
-    bevy_inspector_egui::egui::Window::new(format!("Inspect {entity}"))
+    bevy_inspector_egui::egui::Window::new(title)
+        // Key the window's id by the entity, not its (mutable, possibly
+        // duplicated) title, so its position/state stays stable per entity.
+        .id(bevy_inspector_egui::egui::Id::new(("inspect", entity)))
         .open(&mut open)
         .default_size((320.0, 400.0))
         .show(egui_context.get_mut(), |ui| {
