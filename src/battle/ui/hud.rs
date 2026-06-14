@@ -24,6 +24,12 @@ const HP_TRACK_COLOR: Color = Color::srgb(0.25, 0.05, 0.05);
 /// Fill colour of an HP bar.
 const HP_FILL_COLOR: Color = Color::srgb(0.85, 0.15, 0.15);
 
+/// Background of the full-width bottom info pane — the Godot `menu_panel`
+/// `StyleBoxFlat` (`bg_color = (0.08, 0.08, 0.08, 0.7)`).
+const INFO_PANE_COLOR: Color = Color::srgba(0.08, 0.08, 0.08, 0.7);
+/// Height of the info pane (the Godot `MenuPanel` `offset_top = -160`).
+const INFO_PANE_HEIGHT: f32 = 160.0;
+
 /// World-space size of an enemy mini HP bar (the Godot `enemy_health_bar`
 /// `custom_minimum_size` of 48×6).
 const ENEMY_BAR_SIZE: Vec2 = Vec2::new(48.0, 6.0);
@@ -86,6 +92,11 @@ pub fn hp_fill_fraction(current: i32, max: i32) -> f32 {
 /// by [`refresh_player_hud`] on the first `Changed<Health>` (which fires the
 /// frame the player spawns).
 pub fn spawn_hud(mut commands: Commands) {
+    // The Godot `MenuPanel`: a full-width `PanelContainer` anchored to the bottom
+    // with a fixed height and the dark translucent background. Its single
+    // `HBoxContainer` splits the row into enemy info (left) and player info
+    // (right); `justify_content: SpaceBetween` reproduces the two
+    // `size_flags_horizontal = 3` children pushing to the two edges.
     commands
         .spawn((
             HudRoot,
@@ -94,11 +105,14 @@ pub fn spawn_hud(mut commands: Commands) {
                 bottom: Val::Px(0.0),
                 left: Val::Px(0.0),
                 width: Val::Percent(100.0),
-                padding: UiRect::all(Val::Px(16.0)),
+                height: Val::Px(INFO_PANE_HEIGHT),
+                // The Godot `menu_panel` content margins: 16 px left/right.
+                padding: UiRect::axes(Val::Px(16.0), Val::Px(12.0)),
                 justify_content: JustifyContent::SpaceBetween,
-                align_items: AlignItems::FlexEnd,
+                align_items: AlignItems::Center,
                 ..default()
             },
+            BackgroundColor(INFO_PANE_COLOR),
         ))
         .with_children(|root| {
             // Left: the dynamic enemy name column.
@@ -111,11 +125,13 @@ pub fn spawn_hud(mut commands: Commands) {
                 },
             ));
 
-            // Right: the player name over a full-width HP track + fill.
+            // Right: the player name over a fixed-width HP track + fill, matching
+            // the Godot `PlayerInfoContainer` (name right-aligned above a 200×12
+            // `ProgressBar`).
             root.spawn(Node {
                 flex_direction: FlexDirection::Column,
                 row_gap: Val::Px(4.0),
-                width: Val::Px(220.0),
+                width: Val::Px(200.0),
                 align_items: AlignItems::FlexEnd,
                 ..default()
             })
@@ -128,7 +144,7 @@ pub fn spawn_hud(mut commands: Commands) {
                     .spawn((
                         Node {
                             width: Val::Percent(100.0),
-                            height: Val::Px(14.0),
+                            height: Val::Px(12.0),
                             ..default()
                         },
                         BackgroundColor(HP_TRACK_COLOR),

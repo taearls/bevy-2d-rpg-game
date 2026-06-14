@@ -22,6 +22,15 @@ const DEFAULT_COLOR: Color = Color::WHITE;
 /// The cursor glyph drawn to the left of the highlighted row.
 const CURSOR_TEXT: &str = ">";
 
+/// Background of the action-menu / log panel — the Godot `action_menu_panel`
+/// `StyleBoxFlat` (`bg_color = (0.12, 0.12, 0.16, 1)`).
+const PANEL_BG_COLOR: Color = Color::srgb(0.12, 0.12, 0.16);
+/// White 2px border of the action-menu panel (the Godot `border_color`).
+const PANEL_BORDER_COLOR: Color = Color::WHITE;
+/// How far above the bottom of the screen the centred action-menu panel floats
+/// (the Godot `ActionMenuPanel` `offset_top = -170`).
+const PANEL_BOTTOM_OFFSET: f32 = 170.0;
+
 /// The four menu actions, in display order. Index parity with the row layout and
 /// with the Godot `SetActions(Fight, Items, Defend, Flee)` ordering.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -224,45 +233,64 @@ pub fn update_menu_highlight(
 /// hidden yellow `>` cursor beside its action label. Highlight state is applied
 /// separately by [`update_menu_highlight`].
 pub fn spawn_action_menu(mut commands: Commands) {
+    // A full-width, bottom-anchored wrapper that horizontally centres the panel
+    // box — the Bevy equivalent of the Godot `ActionMenuPanel` `anchor 0.5`
+    // centring. The wrapper takes no space visually (no background); the
+    // `ActionMenuPanel` child is the styled box that floats above the info pane.
     commands
-        .spawn((
-            ActionMenuPanel,
-            Node {
-                position_type: PositionType::Absolute,
-                bottom: Val::Px(24.0),
-                left: Val::Px(24.0),
-                flex_direction: FlexDirection::Column,
-                row_gap: Val::Px(4.0),
-                ..default()
-            },
-        ))
-        .with_children(|panel| {
-            for (index, action) in MenuAction::ALL.iter().enumerate() {
-                panel
-                    .spawn((
-                        MenuRow(index),
-                        Node {
-                            flex_direction: FlexDirection::Row,
-                            column_gap: Val::Px(8.0),
-                            ..default()
-                        },
-                    ))
-                    .with_children(|row| {
-                        row.spawn((
-                            MenuCursor(index),
-                            Text::new(CURSOR_TEXT),
-                            TextColor(HIGHLIGHT_COLOR),
-                            // Hidden until `update_menu_highlight` reveals the
-                            // cursor on the highlighted row.
-                            Visibility::Hidden,
-                        ));
-                        row.spawn((
-                            MenuLabel(index),
-                            Text::new(action.label()),
-                            TextColor(DEFAULT_COLOR),
-                        ));
-                    });
-            }
+        .spawn(Node {
+            position_type: PositionType::Absolute,
+            bottom: Val::Px(PANEL_BOTTOM_OFFSET),
+            left: Val::Px(0.0),
+            width: Val::Percent(100.0),
+            justify_content: JustifyContent::Center,
+            ..default()
+        })
+        .with_children(|wrapper| {
+            wrapper
+                .spawn((
+                    ActionMenuPanel,
+                    Node {
+                        flex_direction: FlexDirection::Column,
+                        row_gap: Val::Px(4.0),
+                        // The Godot `action_menu_panel` content margins (16/12)
+                        // and 2px border.
+                        padding: UiRect::axes(Val::Px(16.0), Val::Px(12.0)),
+                        border: UiRect::all(Val::Px(2.0)),
+                        border_radius: BorderRadius::all(Val::Px(4.0)),
+                        ..default()
+                    },
+                    BackgroundColor(PANEL_BG_COLOR),
+                    BorderColor::all(PANEL_BORDER_COLOR),
+                ))
+                .with_children(|panel| {
+                    for (index, action) in MenuAction::ALL.iter().enumerate() {
+                        panel
+                            .spawn((
+                                MenuRow(index),
+                                Node {
+                                    flex_direction: FlexDirection::Row,
+                                    column_gap: Val::Px(8.0),
+                                    ..default()
+                                },
+                            ))
+                            .with_children(|row| {
+                                row.spawn((
+                                    MenuCursor(index),
+                                    Text::new(CURSOR_TEXT),
+                                    TextColor(HIGHLIGHT_COLOR),
+                                    // Hidden until `update_menu_highlight` reveals the
+                                    // cursor on the highlighted row.
+                                    Visibility::Hidden,
+                                ));
+                                row.spawn((
+                                    MenuLabel(index),
+                                    Text::new(action.label()),
+                                    TextColor(DEFAULT_COLOR),
+                                ));
+                            });
+                    }
+                });
         });
 }
 
