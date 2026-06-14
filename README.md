@@ -17,7 +17,23 @@ A turn-based RPG battle vertical slice built in [Bevy](https://bevyengine.org)
 ```sh
 just run            # launch the game window
 just run-debug      # launch with the egui debug inspector (F12 to toggle)
+just run-fast       # launch with Bevy dynamic linking (fastest iterative builds)
 ```
+
+### Faster compiles
+
+This repo applies Bevy's [recommended build optimizations](https://bevy.org/learn/quick-start/getting-started/setup/):
+
+- **Dev `opt-level` profiles** in `Cargo.toml` — light optimization for our code,
+  full optimization for dependencies.
+- **Bevy dynamic linking** behind the `dynamic_linking` feature — `just run-fast`
+  (or `cargo run --features dynamic_linking`) gives the biggest iterative
+  build-time win. It is opt-in only; never ship a release build with it enabled.
+- **`.cargo/config.toml`** mirroring Bevy's upstream `config_fast_builds.toml`.
+  LLD is already Rust's default linker on Linux, so no extra setup is needed
+  there; the file documents how to opt into [mold](https://github.com/rui314/mold)
+  (`sudo apt-get install mold clang`, then uncomment the mold line) and the
+  nightly-only `share-generics` / parallel-frontend / `no-embed-metadata` flags.
 
 `just run-debug` builds with the `debug-inspector` feature; press **F12** in-game
 to open the [`bevy-inspector-egui`](https://github.com/jakobhellermann/bevy-inspector-egui)
