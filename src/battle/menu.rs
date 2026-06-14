@@ -31,7 +31,7 @@ const PANEL_BORDER_COLOR: Color = Color::WHITE;
 /// Lower than the 160px info-pane height so the box's bottom edge overlaps the
 /// pane; a positive [`ZIndex`] then draws it in front of the dark bar for a
 /// layered look (rather than floating in the gap above it).
-const PANEL_BOTTOM_OFFSET: f32 = 80.0;
+const PANEL_BOTTOM_OFFSET: f32 = 0.0;
 
 /// The four menu actions, in display order. Index parity with the row layout and
 /// with the Godot `SetActions(Fight, Items, Defend, Flee)` ordering.
@@ -143,28 +143,40 @@ pub fn menu_input(
     player: Query<(Entity, &DisplayName), With<Player>>,
 ) {
     let count = MenuAction::ALL.len();
-    if keys.just_pressed(KeyCode::ArrowDown) {
-        selection.highlighted = Some(cycle_index(
-            selection.highlighted,
-            CycleDirection::Down,
-            count,
-        ));
-    } else if keys.just_pressed(KeyCode::ArrowUp) {
-        selection.highlighted = Some(cycle_index(
-            selection.highlighted,
-            CycleDirection::Up,
-            count,
-        ));
-    } else if keys.just_pressed(KeyCode::Enter)
-        && let Some(index) = selection.highlighted
-    {
-        confirm_action(
-            MenuAction::ALL[index],
-            &mut next_state,
-            &mut log,
-            &mut commands,
-            &player,
-        );
+
+    // Resolve the navigation key once, then dispatch. `iter().find` mirrors the
+    // short-circuit of the old if/else-if chain: the first pressed key wins.
+    let pressed = [KeyCode::ArrowDown, KeyCode::ArrowUp, KeyCode::Enter]
+        .into_iter()
+        .find(|&key| keys.just_pressed(key));
+
+    match pressed {
+        Some(KeyCode::ArrowDown) => {
+            selection.highlighted = Some(cycle_index(
+                selection.highlighted,
+                CycleDirection::Down,
+                count,
+            ));
+        }
+        Some(KeyCode::ArrowUp) => {
+            selection.highlighted = Some(cycle_index(
+                selection.highlighted,
+                CycleDirection::Up,
+                count,
+            ));
+        }
+        Some(KeyCode::Enter) => {
+            if let Some(index) = selection.highlighted {
+                confirm_action(
+                    MenuAction::ALL[index],
+                    &mut next_state,
+                    &mut log,
+                    &mut commands,
+                    &player,
+                );
+            }
+        }
+        _ => {}
     }
 }
 
