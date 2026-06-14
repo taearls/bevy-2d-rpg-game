@@ -7,8 +7,16 @@
 //! entity's components (via `bevy-inspector-egui`'s `ui_for_entity`). The panel is
 //! titled with the entity's `DisplayName` when it has one ("Goblin A", "Hero"),
 //! falling back to the raw entity id. It is sticky — it stays on the last-clicked
-//! entity until you click another or press Escape. Every Godot `[Export(Range)]`
-//! tuning knob (`BattleLayout`, `UiConfig`,
+//! entity until you click another or press Escape.
+//!
+//! Two conveniences ride alongside the per-entity panel:
+//! - An **Enemies** list window with one selectable row per alive enemy; clicking
+//!   a row inspects it, so you can pick a target without hunting for its sprite.
+//! - **Jump to code**: because the `debug-inspector` feature enables
+//!   `bevy/track_location`, you can right-click a component in the panel to open
+//!   the source line where it was last changed.
+//!
+//! Every Godot `[Export(Range)]` tuning knob (`BattleLayout`, `UiConfig`,
 //! `DamageVariance`, `Health`, `CombatStats`, …) is registered for reflection by
 //! its owning plugin, so the per-entity panel can edit those values live.
 //!
@@ -23,7 +31,7 @@ use bevy_inspector_egui::bevy_egui::{
 };
 use bevy_inspector_egui::bevy_inspector;
 
-use crate::characters::components::DisplayName;
+use crate::characters::components::{DisplayName, Enemy, Health};
 
 /// The entity whose component inspector is currently shown, or `None` when the
 /// panel is dismissed. Set by a right-click (or Control+left-click) on a sprite,
@@ -60,7 +68,10 @@ impl Plugin for DebugPlugin {
             .add_plugins(EguiPlugin::default())
             .add_observer(on_right_click_inspect)
             .add_systems(Update, (arm_sprite_picking, clear_on_escape))
-            .add_systems(EguiPrimaryContextPass, inspected_entity_ui);
+            .add_systems(
+                EguiPrimaryContextPass,
+                (enemy_list_ui, inspected_entity_ui).chain(),
+            );
     }
 }
 
@@ -114,6 +125,45 @@ fn clear_on_escape(keys: Res<ButtonInput<KeyCode>>, mut inspected: ResMut<Inspec
     if keys.just_pressed(KeyCode::Escape) {
         inspected.0 = None;
     }
+}
+
+/// egui pass: a small "Enemies" window listing the alive enemies, one selectable
+/// row each. Clicking a row sets it as the [`InspectedEntity`], so the per-entity
+/// panel can be opened without hunting for the sprite on screen — a focused
+/// alternative to the removed whole-world tree. The currently-inspected row is
+/// shown selected.
+fn enemy_list_ui(
+    mut contexts: bevy_inspector_egui::bevy_egui::EguiContexts,
+    mut inspected: ResMut<InspectedEntity>,
+    enemies: Query<(Entity, &Enemy, &DisplayName, &Health)>,
+) {
+    let Ok(ctx) = contexts.ctx_mut() else {
+        return;
+    };
+
+    // Alive enemies in layout order, so the list reads left-to-right like the
+    // battlefield.
+    let mut rows: Vec<(usize, Entity, String)> = enemies
+        .iter()
+        .filter(|(_, _, _, health)| health.is_alive())
+        .map(|(entity, enemy, name, _)| (enemy.index, entity, name.0.clone()))
+        .collect();
+    rows.sort_by_key(|(index, _, _)| *index);
+
+    bevy_inspector_egui::egui::Window::new("Enemies")
+        .default_size((180.0, 0.0))
+        .show(ctx, |ui| {
+            if rows.is_empty() {
+                ui.label("(no living enemies)");
+                return;
+            }
+            for (_index, entity, name) in rows {
+                let selected = inspected.0 == Some(entity);
+                if ui.selectable_label(selected, name).clicked() {
+                    inspected.0 = Some(entity);
+                }
+            }
+        });
 }
 
 /// egui pass: if an entity is selected (and still alive), show a window with its
