@@ -1,13 +1,14 @@
-//! Debug inspector — the Bevy replacement for the Godot custom F12 inspector
-//! addon, compiled in only under the `debug-inspector` cargo feature.
+//! Debug inspector — a right-click-to-inspect overlay, compiled in only under
+//! the `debug-inspector` cargo feature.
 //!
-//! Wires `bevy_egui`'s `EguiPlugin` and `bevy-inspector-egui`'s
-//! `WorldInspectorPlugin` (the Bevy 0.18 line), then gates the inspector window
-//! behind an F12-toggled [`InspectorEnabled`] resource via `run_if`. Every former
+//! Instead of dumping the whole entity tree, this wires `bevy_egui`'s
+//! `EguiPlugin` plus a small picking layer: right-click any sprite in the
+//! viewport and an egui window shows just that entity's components (via
+//! `bevy-inspector-egui`'s `ui_for_entity`). The panel is sticky — it stays on
+//! the last-clicked entity until you right-click another or press Escape. Every
 //! Godot `[Export(Range)]` tuning knob (`BattleLayout`, `UiConfig`,
 //! `DamageVariance`, `Health`, `CombatStats`, …) is registered for reflection by
-//! its owning plugin, so toggling the inspector and editing those values
-//! reposition enemies, resize panels, and retune combat live.
+//! its owning plugin, so the per-entity panel can edit those values live.
 //!
 //! The whole module is `#[cfg(feature = "debug-inspector")]` at the call site in
 //! [`GamePlugin`](crate::game::GamePlugin), so a default `cargo build` compiles
@@ -15,27 +16,34 @@
 
 use bevy::prelude::*;
 use bevy::render::RenderApp;
-use bevy_inspector_egui::bevy_egui::EguiPlugin;
-use bevy_inspector_egui::quick::WorldInspectorPlugin;
+use bevy_inspector_egui::bevy_egui::{
+    EguiContext, EguiPlugin, EguiPrimaryContextPass, PrimaryEguiContext,
+};
+use bevy_inspector_egui::bevy_inspector;
 
-/// Whether the world inspector window is currently shown. Toggled with F12,
-/// matching the Godot inspector addon's hotkey. Starts hidden so the game opens
-/// to a clean view; press F12 to reveal the live tuning panel.
+/// The entity whose component inspector is currently shown, or `None` when the
+/// panel is dismissed. Set by a right-click on a sprite, cleared by Escape or the
+/// window's close button.
 #[derive(Resource, Debug, Default)]
-pub struct InspectorEnabled(pub bool);
+pub struct InspectedEntity(pub Option<Entity>);
 
-/// Adds the egui-backed world inspector behind an F12 toggle.
+/// Marker for sprites we've already made pickable, so [`arm_sprite_picking`]
+/// doesn't re-insert `Pickable` every frame.
+#[derive(Component, Debug)]
+struct InspectArmed;
+
+/// Adds the right-click-to-inspect overlay.
 ///
-/// Only added to the app under the `debug-inspector` feature; see the module
-/// docs. Pulls in `EguiPlugin` (its render/context machinery) and the
-/// `WorldInspectorPlugin`, the latter gated on [`InspectorEnabled`] so the panel
-/// is hidden until the player presses F12.
+/// Only added under the `debug-inspector` feature; see the module docs. Pulls in
+/// `EguiPlugin`, arms every sprite for picking, routes right-clicks into
+/// [`InspectedEntity`], and renders the per-entity panel in the egui pass.
 ///
 /// `EguiPlugin` requires the renderer (it registers shader assets into the
 /// `RenderApp` sub-app), so when no `RenderApp` is present — a headless app built
 /// on `MinimalPlugins`, as the smoke test does — this plugin is a no-op rather
 /// than panicking. That is the correct behaviour anyway: with no window there is
-/// nowhere to draw the inspector, so `cargo test --all-features` stays green.
+/// nothing to click and nowhere to draw, so `cargo test --all-features` stays
+/// green.
 pub struct DebugPlugin;
 
 impl Plugin for DebugPlugin {
@@ -44,18 +52,78 @@ impl Plugin for DebugPlugin {
             return;
         }
 
-        app.init_resource::<InspectorEnabled>()
+        app.init_resource::<InspectedEntity>()
             .add_plugins(EguiPlugin::default())
-            .add_plugins(
-                WorldInspectorPlugin::new().run_if(|enabled: Res<InspectorEnabled>| enabled.0),
-            )
-            .add_systems(Update, toggle_inspector);
+            .add_observer(on_right_click_inspect)
+            .add_systems(Update, (arm_sprite_picking, clear_on_escape))
+            .add_systems(EguiPrimaryContextPass, inspected_entity_ui);
     }
 }
 
-/// Flip [`InspectorEnabled`] each time F12 is pressed.
-fn toggle_inspector(keys: Res<ButtonInput<KeyCode>>, mut enabled: ResMut<InspectorEnabled>) {
-    if keys.just_pressed(KeyCode::F12) {
-        enabled.0 = !enabled.0;
+/// Make every world sprite pickable so a right-click can hit it. Inserts
+/// `Pickable` once per sprite (tracked by [`InspectArmed`]); newly-spawned
+/// sprites are armed on the next frame.
+fn arm_sprite_picking(
+    mut commands: Commands,
+    sprites: Query<Entity, (With<Sprite>, Without<InspectArmed>)>,
+) {
+    for entity in &sprites {
+        commands
+            .entity(entity)
+            .insert((Pickable::default(), InspectArmed));
+    }
+}
+
+/// Global observer: a right-click (secondary button) on any pickable entity
+/// selects it for inspection. Left-clicks are ignored here so targeting keeps
+/// the primary button.
+fn on_right_click_inspect(click: On<Pointer<Click>>, mut inspected: ResMut<InspectedEntity>) {
+    if click.event().button == PointerButton::Secondary {
+        inspected.0 = Some(click.event().entity);
+    }
+}
+
+/// Dismiss the inspector panel when Escape is pressed.
+fn clear_on_escape(keys: Res<ButtonInput<KeyCode>>, mut inspected: ResMut<InspectedEntity>) {
+    if keys.just_pressed(KeyCode::Escape) {
+        inspected.0 = None;
+    }
+}
+
+/// egui pass: if an entity is selected (and still alive), show a window with its
+/// component inspector. A despawned selection clears itself so the panel never
+/// dangles on a dead entity.
+fn inspected_entity_ui(world: &mut World) {
+    let Some(entity) = world.resource::<InspectedEntity>().0 else {
+        return;
+    };
+    // The selection may have been despawned (e.g. a defeated enemy); drop it.
+    if world.get_entity(entity).is_err() {
+        world.resource_mut::<InspectedEntity>().0 = None;
+        return;
+    }
+
+    let egui_context = world
+        .query_filtered::<&mut EguiContext, With<PrimaryEguiContext>>()
+        .single(world);
+    let Ok(egui_context) = egui_context else {
+        return;
+    };
+    let mut egui_context = egui_context.clone();
+
+    let mut open = true;
+    bevy_inspector_egui::egui::Window::new(format!("Inspect {entity}"))
+        .open(&mut open)
+        .default_size((320.0, 400.0))
+        .show(egui_context.get_mut(), |ui| {
+            bevy_inspector_egui::egui::ScrollArea::both().show(ui, |ui| {
+                bevy_inspector::ui_for_entity(world, entity, ui);
+                ui.allocate_space(ui.available_size());
+            });
+        });
+
+    // The window's close button (the `open` flag) dismisses the panel too.
+    if !open {
+        world.resource_mut::<InspectedEntity>().0 = None;
     }
 }
