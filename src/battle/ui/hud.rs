@@ -33,8 +33,14 @@ const INFO_PANE_HEIGHT: f32 = 160.0;
 /// World-space size of an enemy mini HP bar (the Godot `enemy_health_bar`
 /// `custom_minimum_size` of 48×6).
 const ENEMY_BAR_SIZE: Vec2 = Vec2::new(48.0, 6.0);
-/// How far above the enemy sprite origin the mini HP bar sits.
-const ENEMY_BAR_Y: f32 = 70.0;
+/// How far above the enemy sprite origin the mini HP bar sits. Kept close to the
+/// sprite so the bar reads as belonging to it.
+const ENEMY_BAR_Y: f32 = 45.0;
+/// How far above the HP bar the enemy name label floats, so the stack reads
+/// name → bar → sprite from top to bottom.
+const ENEMY_LABEL_Y: f32 = ENEMY_BAR_Y + 18.0;
+/// Font size of the world-space enemy name label.
+const ENEMY_LABEL_FONT_SIZE: f32 = 16.0;
 
 /// Root of the bottom HUD bar (absolute, full-width). Holds the player HUD on the
 /// right and the enemy label column on the left.
@@ -51,13 +57,11 @@ pub struct PlayerNameLabel;
 #[derive(Component, Debug)]
 pub struct PlayerHpFill;
 
-/// The column container that holds the dynamic enemy name labels (the Godot
-/// `_enemyInfoContainer`).
-#[derive(Component, Debug)]
-pub struct EnemyLabelContainer;
-
-/// One dynamic enemy name label, tagged with the enemy entity it names so the
-/// highlight system can match it against the current [`Targeted`] enemy.
+/// One world-space enemy name label, floating above that enemy's HP bar. Tagged
+/// with the enemy entity it names so the highlight system can match it against
+/// the current [`Targeted`] enemy and the death system can drop it when the enemy
+/// dies. Spawned as a child of the enemy (alongside the HP bar), so it rides
+/// along with the sprite.
 #[derive(Component, Debug, Clone, Copy)]
 pub struct EnemyNameLabel(pub Entity);
 
@@ -84,19 +88,17 @@ pub fn hp_fill_fraction(current: i32, max: i32) -> f32 {
     (current.max(0) as f32 / max as f32).clamp(0.0, 1.0)
 }
 
-/// Startup: spawn the static HUD tree — the bottom bar with the enemy-label
-/// column on the left and the player name + HP track/fill on the right.
+/// Startup: spawn the static HUD tree — the bottom info pane holding the player
+/// name + HP track/fill, right-aligned.
 ///
-/// The enemy column starts empty; [`refresh_enemy_labels`] populates it from the
-/// alive enemies once they spawn. The player widgets start blank and are filled
-/// by [`refresh_player_hud`] on the first `Changed<Health>` (which fires the
-/// frame the player spawns).
+/// Enemy names no longer live here: they float in world space above each enemy's
+/// HP bar (see [`spawn_enemy_health_bar`]). The player widgets start blank and are
+/// filled by [`refresh_player_hud`] on the first `Changed<Health>` (which fires
+/// the frame the player spawns).
 pub fn spawn_hud(mut commands: Commands) {
     // The Godot `MenuPanel`: a full-width `PanelContainer` anchored to the bottom
-    // with a fixed height and the dark translucent background. Its single
-    // `HBoxContainer` splits the row into enemy info (left) and player info
-    // (right); `justify_content: SpaceBetween` reproduces the two
-    // `size_flags_horizontal = 3` children pushing to the two edges.
+    // with a fixed height and the dark translucent background. The player info
+    // sits at the right edge (`justify_content: FlexEnd`).
     commands
         .spawn((
             HudRoot,
@@ -108,25 +110,15 @@ pub fn spawn_hud(mut commands: Commands) {
                 height: Val::Px(INFO_PANE_HEIGHT),
                 // The Godot `menu_panel` content margins: 16 px left/right.
                 padding: UiRect::axes(Val::Px(16.0), Val::Px(12.0)),
-                justify_content: JustifyContent::SpaceBetween,
+                justify_content: JustifyContent::FlexEnd,
                 align_items: AlignItems::Center,
                 ..default()
             },
             BackgroundColor(INFO_PANE_COLOR),
         ))
         .with_children(|root| {
-            // Left: the dynamic enemy name column.
-            root.spawn((
-                EnemyLabelContainer,
-                Node {
-                    flex_direction: FlexDirection::Column,
-                    row_gap: Val::Px(4.0),
-                    ..default()
-                },
-            ));
-
-            // Right: the player name over a fixed-width HP track + fill, matching
-            // the Godot `PlayerInfoContainer` (name right-aligned above a 200×12
+            // The player name over a fixed-width HP track + fill, matching the
+            // Godot `PlayerInfoContainer` (name right-aligned above a 200×12
             // `ProgressBar`).
             root.spawn(Node {
                 flex_direction: FlexDirection::Column,
@@ -184,50 +176,30 @@ pub fn refresh_player_hud(
     }
 }
 
-/// `BattleSet::Ui`: rebuild the enemy name column whenever the set of alive
-/// enemies changes — on death (one drops out) and on first spawn (they appear).
+/// `BattleSet::Ui`: drop a world-space enemy name label once its enemy dies, so a
+/// defeated enemy keeps neither a name nor an HP bar floating over its sprite.
 ///
-/// Rebuilds rather than diffs: the column is despawned-and-respawned from the
-/// current alive enemies in layout order, so a defeated enemy's label simply
-/// stops being re-created. Runs only when an enemy's [`Health`] changed, so a
-/// steady state costs one cheap early-out. Mirrors the Godot
+/// The label is spawned as a child of the enemy (see [`spawn_enemy_health_bar`]),
+/// so it appears with the sprite and rides along with it; this system only needs
+/// to remove it on death. Runs only when an enemy's [`Health`] changed, so a
+/// steady state costs one cheap early-out. Replaces the Godot
 /// `ClearAndFreeChildren` + re-add of alive enemies.
 pub fn refresh_enemy_labels(
     mut commands: Commands,
     changed: Query<(), (With<Enemy>, Changed<Health>)>,
-    enemies: Query<(Entity, &Enemy, &DisplayName, &Health)>,
-    container: Query<Entity, With<EnemyLabelContainer>>,
-    existing: Query<Entity, With<EnemyNameLabel>>,
+    healths: Query<&Health>,
+    labels: Query<(Entity, &EnemyNameLabel)>,
 ) {
     if changed.is_empty() {
         return;
     }
-    let Ok(container) = container.single() else {
-        return;
-    };
-
-    // Despawn the old labels (the Godot RemoveChild + Free), then re-add one per
-    // alive enemy in layout order.
-    for label in &existing {
-        commands.entity(label).despawn();
-    }
-
-    let mut alive: Vec<(usize, Entity, String)> = enemies
-        .iter()
-        .filter(|(_, _, _, health)| health.is_alive())
-        .map(|(entity, enemy, name, _)| (enemy.index, entity, name.0.clone()))
-        .collect();
-    alive.sort_by_key(|(index, _, _)| *index);
-
-    commands.entity(container).with_children(|column| {
-        for (_, entity, name) in alive {
-            column.spawn((
-                EnemyNameLabel(entity),
-                Text::new(name),
-                TextColor(DEFAULT_COLOR),
-            ));
+    for (label, EnemyNameLabel(owner)) in &labels {
+        // Despawn the label if its owner is gone or no longer alive.
+        let dead = healths.get(*owner).is_ok_and(|h| !h.is_alive());
+        if dead || healths.get(*owner).is_err() {
+            commands.entity(label).despawn();
         }
-    });
+    }
 }
 
 /// `BattleSet::Ui`: tint the enemy name label of the currently [`Targeted`] enemy
@@ -277,14 +249,27 @@ pub fn sync_enemy_health_bars(
     }
 }
 
-/// Spawn an enemy's world-space mini HP bar as two child sprite quads — a dark
-/// track and a red fill — positioned [`ENEMY_BAR_Y`] above the sprite origin.
+/// Spawn an enemy's world-space overlay — the name label, the mini HP bar (dark
+/// track + red fill), stacked above the sprite as name → bar → sprite.
 ///
-/// Called from the enemy spawner so each enemy owns its bar. The fill carries an
-/// [`EnemyHealthBar`] tagged with `owner` so [`sync_enemy_health_bars`] can scale
-/// it against that enemy's health; the track is static. The fill's child
-/// transform is relative to the enemy, so it rides along as the enemy moves.
-pub fn spawn_enemy_health_bar(parent: &mut ChildSpawnerCommands, owner: Entity) {
+/// Called from the enemy spawner so each enemy owns these. The bar sits
+/// [`ENEMY_BAR_Y`] above the sprite origin and the name [`ENEMY_LABEL_Y`] above
+/// that. The fill carries an [`EnemyHealthBar`] tagged with `owner` so
+/// [`sync_enemy_health_bars`] can scale it against that enemy's health; the name
+/// carries an [`EnemyNameLabel`] for the targeting highlight and the death
+/// despawn. All are children of the enemy, so they ride along with the sprite.
+pub fn spawn_enemy_health_bar(parent: &mut ChildSpawnerCommands, owner: Entity, name: &str) {
+    // Name label, floating above the HP bar.
+    parent.spawn((
+        EnemyNameLabel(owner),
+        Text2d::new(name.to_string()),
+        TextFont {
+            font_size: ENEMY_LABEL_FONT_SIZE,
+            ..default()
+        },
+        TextColor(DEFAULT_COLOR),
+        Transform::from_xyz(0.0, ENEMY_LABEL_Y, 0.7),
+    ));
     // Dark track behind the fill.
     parent.spawn((
         Sprite::from_color(HP_TRACK_COLOR, ENEMY_BAR_SIZE),

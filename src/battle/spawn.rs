@@ -229,11 +229,12 @@ pub fn spawn_enemies(
             ))
             .observe(on_enemy_clicked)
             .id();
-        // The world-space mini HP bar rides under the sprite, scaled by the
-        // enemy's health fraction by the HUD's `sync_enemy_health_bars`.
+        // The world-space name label + mini HP bar ride above the sprite, the bar
+        // scaled by the enemy's health fraction by `sync_enemy_health_bars`.
+        let name = entry.display_name.clone();
         commands
             .entity(enemy)
-            .with_children(|parent| spawn_enemy_health_bar(parent, enemy));
+            .with_children(|parent| spawn_enemy_health_bar(parent, enemy, &name));
     }
 }
 

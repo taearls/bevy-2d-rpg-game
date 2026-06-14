@@ -93,12 +93,18 @@ fn ui_app(enemy_healths: &[i32]) -> (App, Vec<Entity>, Entity) {
                     Visibility::Visible,
                 ))
                 .id();
-            // The production path spawns the mini HP bar via `Commands`
-            // (`spawn_enemy_health_bar`); here we mirror its fill quad directly
-            // through the world spawner so `sync_enemy_health_bars` has a bar to
-            // scale. Only the fill (the entity that carries `EnemyHealthBar` and
-            // gets scaled) matters for these assertions.
+            // The production path spawns the name label + mini HP bar via
+            // `Commands` (`spawn_enemy_health_bar`); here we mirror the two
+            // entities the assertions touch — the `EnemyNameLabel` (for the label
+            // count and targeting-highlight cases) and the fill quad carrying
+            // `EnemyHealthBar` (for the scale case) — directly through the world
+            // spawner.
             app.world_mut().entity_mut(enemy).with_children(|parent| {
+                parent.spawn((
+                    EnemyNameLabel(enemy),
+                    Text2d::new(format!("Goblin {index}")),
+                    TextColor(Color::WHITE),
+                ));
                 parent.spawn((
                     EnemyHealthBar { owner: enemy },
                     Sprite::from_color(Color::WHITE, Vec2::new(48.0, 6.0)),
