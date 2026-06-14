@@ -222,6 +222,11 @@ fn confirm_action(
 /// Redraw the menu to match [`MenuSelection`]: show the cursor on exactly the
 /// highlighted row (hidden elsewhere) and recolour labels yellow/white. Runs in
 /// [`BattleSet::Ui`] every frame so the menu always reflects current state.
+///
+/// The highlighted cursor is set to [`Visibility::Inherited`], not `Visible`, so
+/// it disappears with the action-menu panel when [`swap_panel_for_phase`] hides
+/// it during the enemy turn. An explicit `Visible` here would override the
+/// panel's inherited `Hidden` and leave the cursor lingering off-turn.
 pub fn update_menu_highlight(
     selection: Res<MenuSelection>,
     mut cursors: Query<(&MenuCursor, &mut Visibility)>,
@@ -229,7 +234,7 @@ pub fn update_menu_highlight(
 ) {
     for (MenuCursor(index), mut visibility) in &mut cursors {
         *visibility = if selection.highlighted == Some(*index) {
-            Visibility::Visible
+            Visibility::Inherited
         } else {
             Visibility::Hidden
         };

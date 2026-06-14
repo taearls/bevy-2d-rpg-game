@@ -191,11 +191,13 @@ fn row_zero_highlighted_on_player_turn_start() {
 fn cursor_visible_on_exactly_one_row() {
     let mut app = menu_app("Hero");
 
+    // The highlighted cursor is `Inherited` (it tracks the panel's visibility);
+    // the rest are explicitly `Hidden`. "Shown" therefore means "not Hidden".
     let visible: Vec<usize> = app
         .world_mut()
         .query::<(&MenuCursor, &Visibility)>()
         .iter(app.world())
-        .filter(|(_, vis)| matches!(vis, Visibility::Visible))
+        .filter(|(_, vis)| !matches!(vis, Visibility::Hidden))
         .map(|(cursor, _)| cursor.0)
         .collect();
 
@@ -245,7 +247,7 @@ fn cursor_follows_highlight_after_navigation() {
         .world_mut()
         .query::<(&MenuCursor, &Visibility)>()
         .iter(app.world())
-        .filter(|(_, vis)| matches!(vis, Visibility::Visible))
+        .filter(|(_, vis)| !matches!(vis, Visibility::Hidden))
         .map(|(cursor, _)| cursor.0)
         .collect();
     assert_eq!(visible, vec![2]);
