@@ -10,10 +10,13 @@
 use bevy::prelude::*;
 use rand::Rng;
 
+use crate::battle::enemy_turn::EnemyTurnQueue;
 use crate::battle::messages::LogMessage;
 use crate::battle::rng::DamageRng;
 use crate::battle::state::TurnPhase;
-use crate::characters::components::{CombatStats, DamageVariance, DisplayName, Enemy, Health};
+use crate::characters::components::{
+    CombatStats, DamageVariance, Defending, DisplayName, Enemy, Health, Player,
+};
 
 use super::damage::compute_damage;
 use super::events::{AttackRequested, DamageDealt, Died};
@@ -29,6 +32,12 @@ use super::events::{AttackRequested, DamageDealt, Died};
 /// already at zero health, are skipped silently — the resolver never assumes the
 /// world still matches when the attack was queued.
 ///
+/// A target carrying [`Defending`] halves the attacker's *attack value* before
+/// the formula (not the final damage), matching the Godot
+/// `_lastPlayerAction == Defend` branch that scaled the incoming attack stat.
+/// The marker is cleared `OnEnter(PlayerTurn)`, so the mitigation lasts exactly
+/// one enemy turn.
+///
 /// Mirrors Godot `BattleCharacter.TakeDamage` plus the `DamageDealt` /
 /// `CharacterDefeated` signal emissions.
 pub fn apply_attacks(
@@ -38,7 +47,7 @@ pub fn apply_attacks(
     mut rng: ResMut<DamageRng>,
     mut commands: Commands,
     attackers: Query<(&CombatStats, &DamageVariance, &DisplayName)>,
-    mut targets: Query<(&mut Health, &DisplayName)>,
+    mut targets: Query<(&mut Health, &DisplayName, Has<Defending>)>,
 ) {
     for &AttackRequested { attacker, target } in attacks.read() {
         let Ok((stats, variance, attacker_name)) = attackers.get(attacker) else {
@@ -48,15 +57,23 @@ pub fn apply_attacks(
         // queries never overlap (an entity can't be both in this resolver).
         let attacker_name = attacker_name.0.clone();
 
-        let Ok((mut health, target_name)) = targets.get_mut(target) else {
+        let Ok((mut health, target_name, defending)) = targets.get_mut(target) else {
             continue;
         };
         if !health.is_alive() {
             continue;
         }
 
+        // Defend halves the attacker's attack value *before* the formula, so the
+        // defense subtraction and variance roll apply to the reduced figure.
+        // Integer division floors, matching the Godot halving.
+        let attack = if defending {
+            stats.attack / 2
+        } else {
+            stats.attack
+        };
         let roll = rng.0.random_range(variance.min..=variance.max);
-        let amount = compute_damage(stats.attack, stats.defense, roll);
+        let amount = compute_damage(attack, stats.defense, roll);
         health.current = (health.current - amount).clamp(0, health.max);
 
         let target_name = target_name.0.clone();
@@ -89,25 +106,54 @@ pub fn on_died_hide_sprite(died: On<Died>, mut visibility: Query<&mut Visibility
     }
 }
 
-/// `BattleSet::Cleanup`: end the battle when every enemy is dead, otherwise hand
-/// the turn to the enemies.
+/// `BattleSet::Cleanup`: decide the battle's fate the frame an attack landed.
 ///
-/// Runs only the frame combat was resolved (gated on the caller to
-/// [`Targeting`](TurnPhase::Targeting) exit in Phase 5). If no enemy has positive
-/// health, writes "Victory!" and moves to [`BattleOver`](TurnPhase::BattleOver);
-/// otherwise advances to [`EnemyTurn`](TurnPhase::EnemyTurn). Mirrors the Godot
-/// `CheckBattleEnd` victory branch (the defeat branch arrives with the enemy turn
-/// in Phase 6).
+/// Runs only on a frame that produced a [`DamageDealt`] (gated by the caller),
+/// so it sees the world right after `apply_attacks`. The checks, in order:
+///
+/// 1. **Defeat** — the player is dead: write "Game Over!", clear the
+///    [`EnemyTurnQueue`] so no further enemy attacks resolve, and move to
+///    [`BattleOver`](TurnPhase::BattleOver). Checked first so a blow that fells
+///    the player ends the battle even if it also happened to clear the last
+///    enemy.
+/// 2. **Victory** — every enemy is dead: write "Victory!" and move to
+///    `BattleOver`.
+/// 3. **Player attack resolved, enemies remain** — only when we are leaving
+///    [`Targeting`](TurnPhase::Targeting): hand the turn to the enemies via
+///    [`EnemyTurn`](TurnPhase::EnemyTurn).
+///
+/// During the enemy turn (case 3's guard is false) a non-terminal attack leaves
+/// the state untouched: [`tick_enemy_turn`](crate::battle::enemy_turn::tick_enemy_turn)
+/// owns the `EnemyTurn → PlayerTurn` hand-back once its queue empties. Mirrors
+/// the Godot `CheckBattleEnd` victory/defeat branches.
 pub fn check_battle_end(
+    state: Res<State<TurnPhase>>,
     enemies: Query<&Health, With<Enemy>>,
+    player: Query<&Health, With<Player>>,
+    mut queue: ResMut<EnemyTurnQueue>,
     mut next_state: ResMut<NextState<TurnPhase>>,
     mut log: MessageWriter<LogMessage>,
 ) {
-    let all_dead = enemies.iter().all(|health| !health.is_alive());
-    if all_dead {
+    let player_dead = player.iter().any(|health| !health.is_alive());
+    if player_dead {
+        log.write(LogMessage::new("Game Over!"));
+        // Stop any enemies still queued behind the lethal blow.
+        queue.pending.clear();
+        next_state.set(TurnPhase::BattleOver);
+        return;
+    }
+
+    let all_enemies_dead = enemies.iter().all(|health| !health.is_alive());
+    if all_enemies_dead {
         log.write(LogMessage::new("Victory!"));
         next_state.set(TurnPhase::BattleOver);
-    } else {
+        return;
+    }
+
+    // A resolved *player* attack (we are still in Targeting) hands off to the
+    // enemy turn. A resolved enemy attack leaves the state alone — the enemy
+    // queue tick decides when the turn ends.
+    if *state.get() == TurnPhase::Targeting {
         next_state.set(TurnPhase::EnemyTurn);
     }
 }
