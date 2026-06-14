@@ -2,11 +2,11 @@
 //! the `debug-inspector` cargo feature.
 //!
 //! Instead of dumping the whole entity tree, this wires `bevy_egui`'s
-//! `EguiPlugin` plus a small picking layer: right-click any sprite in the
-//! viewport and an egui window shows just that entity's components (via
-//! `bevy-inspector-egui`'s `ui_for_entity`). The panel is sticky — it stays on
-//! the last-clicked entity until you right-click another or press Escape. Every
-//! Godot `[Export(Range)]` tuning knob (`BattleLayout`, `UiConfig`,
+//! `EguiPlugin` plus a small picking layer: right-click (or Control+left-click on
+//! a trackpad) any sprite in the viewport and an egui window shows just that
+//! entity's components (via `bevy-inspector-egui`'s `ui_for_entity`). The panel is
+//! sticky — it stays on the last-clicked entity until you click another or press
+//! Escape. Every Godot `[Export(Range)]` tuning knob (`BattleLayout`, `UiConfig`,
 //! `DamageVariance`, `Health`, `CombatStats`, …) is registered for reflection by
 //! its owning plugin, so the per-entity panel can edit those values live.
 //!
@@ -22,8 +22,8 @@ use bevy_inspector_egui::bevy_egui::{
 use bevy_inspector_egui::bevy_inspector;
 
 /// The entity whose component inspector is currently shown, or `None` when the
-/// panel is dismissed. Set by a right-click on a sprite, cleared by Escape or the
-/// window's close button.
+/// panel is dismissed. Set by a right-click (or Control+left-click) on a sprite,
+/// cleared by Escape or the window's close button.
 #[derive(Resource, Debug, Default)]
 pub struct InspectedEntity(pub Option<Entity>);
 
@@ -74,12 +74,34 @@ fn arm_sprite_picking(
     }
 }
 
-/// Global observer: a right-click (secondary button) on any pickable entity
-/// selects it for inspection. Left-clicks are ignored here so targeting keeps
-/// the primary button.
-fn on_right_click_inspect(click: On<Pointer<Click>>, mut inspected: ResMut<InspectedEntity>) {
-    if click.event().button == PointerButton::Secondary {
-        inspected.0 = Some(click.event().entity);
+/// Global observer: select an entity for inspection on a right-click (secondary
+/// button) **or** a Control+left-click. The latter is needed because macOS
+/// delivers Control-click to the app as a *primary* button with Control held, not
+/// as a secondary button — so a trackpad user without a dedicated right button can
+/// still inspect. A plain left-click (no Control) is ignored here so targeting
+/// keeps the primary button.
+///
+/// We only accept clicks that resolved to a `Sprite` entity. A single click fires
+/// a `Pointer<Click>` for every picked entity under the cursor, including the
+/// window-backed entity from the window picking backend; without this filter that
+/// window pick (processed after the sprite's) would overwrite the selection, so
+/// every inspect would show the window instead of the sprite clicked.
+fn on_right_click_inspect(
+    click: On<Pointer<Click>>,
+    keys: Res<ButtonInput<KeyCode>>,
+    sprites: Query<(), With<Sprite>>,
+    mut inspected: ResMut<InspectedEntity>,
+) {
+    let entity = click.event().entity;
+    if sprites.get(entity).is_err() {
+        return;
+    }
+    let button = click.event().button;
+    let ctrl_held = keys.pressed(KeyCode::ControlLeft) || keys.pressed(KeyCode::ControlRight);
+    let inspect_requested =
+        button == PointerButton::Secondary || (button == PointerButton::Primary && ctrl_held);
+    if inspect_requested {
+        inspected.0 = Some(entity);
     }
 }
 
