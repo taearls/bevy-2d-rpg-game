@@ -19,11 +19,27 @@ use super::{UiConfig, log_showing};
 /// Colour of a battle-log line.
 const LOG_TEXT_COLOR: Color = Color::srgb(0.9, 0.9, 0.9);
 
+/// Background of the log panel — shares the Godot `action_menu_panel` style with
+/// the action menu it swaps in for (`bg_color = (0.12, 0.12, 0.16, 1)`).
+const LOG_PANEL_BG_COLOR: Color = Color::srgb(0.12, 0.12, 0.16);
+/// White 2px border matching the action-menu panel.
+const LOG_PANEL_BORDER_COLOR: Color = Color::WHITE;
+/// How far above the bottom of the screen the log panel sits — matches the
+/// action-menu panel so the two occupy the same slot (overlapping the info pane,
+/// drawn in front) when swapped.
+const LOG_PANEL_BOTTOM_OFFSET: f32 = 80.0;
+
 /// The container that holds the battle-log lines (the Godot
 /// `_battleMessageContainer`). Spawned hidden alongside the action menu; shown
 /// while the log is active.
 #[derive(Component, Debug)]
 pub struct BattleLogContainer;
+
+/// The full-width wrapper that centres the log box. Carries the `Visibility`
+/// that [`swap_panel_for_phase`] toggles; because Bevy visibility inherits, the
+/// styled [`BattleLogContainer`] child shows/hides along with it.
+#[derive(Component, Debug)]
+pub struct BattleLogPanel;
 
 /// Format a log line for display. A standalone helper so the (currently
 /// timestamp-free) format has a single home and the log test can assert it
@@ -40,19 +56,40 @@ pub fn format_log_line(text: &str) -> String {
 /// visibility. Starts [`Visibility::Hidden`]; [`swap_panel_for_phase`] reveals it
 /// during the enemy turn / battle-over phases.
 pub fn spawn_battle_log(mut commands: Commands) {
-    commands.spawn((
-        BattleLogContainer,
-        Node {
-            position_type: PositionType::Absolute,
-            bottom: Val::Px(24.0),
-            left: Val::Px(24.0),
-            flex_direction: FlexDirection::Column,
-            row_gap: Val::Px(2.0),
-            ..default()
-        },
-        // Hidden until the enemy turn / battle end shows the log.
-        Visibility::Hidden,
-    ));
+    // A full-width, bottom-anchored wrapper that horizontally centres the log
+    // box, mirroring the action-menu panel it swaps in for so the two occupy the
+    // same on-screen slot.
+    commands
+        .spawn((
+            BattleLogPanel,
+            Node {
+                position_type: PositionType::Absolute,
+                bottom: Val::Px(LOG_PANEL_BOTTOM_OFFSET),
+                left: Val::Px(0.0),
+                width: Val::Percent(100.0),
+                justify_content: JustifyContent::Center,
+                ..default()
+            },
+            // Draw the log box in front of the info pane it overlaps.
+            ZIndex(1),
+            // Hidden until the enemy turn / battle end shows the log.
+            Visibility::Hidden,
+        ))
+        .with_children(|wrapper| {
+            wrapper.spawn((
+                BattleLogContainer,
+                Node {
+                    flex_direction: FlexDirection::Column,
+                    row_gap: Val::Px(2.0),
+                    padding: UiRect::axes(Val::Px(16.0), Val::Px(12.0)),
+                    border: UiRect::all(Val::Px(2.0)),
+                    border_radius: BorderRadius::all(Val::Px(4.0)),
+                    ..default()
+                },
+                BackgroundColor(LOG_PANEL_BG_COLOR),
+                BorderColor::all(LOG_PANEL_BORDER_COLOR),
+            ));
+        });
 }
 
 /// `BattleSet::Ui`: drain pending [`LogMessage`]s into `Text` children of the log
@@ -92,10 +129,7 @@ pub fn swap_panel_for_phase(
         &mut Visibility,
         (With<ActionMenuPanel>, Without<BattleLogContainer>),
     >,
-    mut log_visibility: Query<
-        &mut Visibility,
-        (With<BattleLogContainer>, Without<ActionMenuPanel>),
-    >,
+    mut log_visibility: Query<&mut Visibility, (With<BattleLogPanel>, Without<ActionMenuPanel>)>,
 ) {
     let showing = log_showing(*state.get());
 

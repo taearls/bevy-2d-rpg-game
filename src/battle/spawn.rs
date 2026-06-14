@@ -186,7 +186,12 @@ pub fn spawn_player(
 ) {
     commands.spawn((
         Player,
-        Sprite::from_image(asset_server.load(def.sprite.clone())),
+        // Mirror horizontally so the hero faces the enemies on the left, matching
+        // the Godot `HeroSprite` `flip_h = true`.
+        Sprite {
+            flip_x: true,
+            ..Sprite::from_image(asset_server.load(def.sprite.clone()))
+        },
         Transform::from_translation(position.extend(0.0)),
         DisplayName(def.display_name.clone()),
         Health::full(def.stats.max_health),
@@ -224,11 +229,12 @@ pub fn spawn_enemies(
             ))
             .observe(on_enemy_clicked)
             .id();
-        // The world-space mini HP bar rides under the sprite, scaled by the
-        // enemy's health fraction by the HUD's `sync_enemy_health_bars`.
+        // The world-space name label + mini HP bar ride above the sprite, the bar
+        // scaled by the enemy's health fraction by `sync_enemy_health_bars`.
+        let name = entry.display_name.clone();
         commands
             .entity(enemy)
-            .with_children(|parent| spawn_enemy_health_bar(parent, enemy));
+            .with_children(|parent| spawn_enemy_health_bar(parent, enemy, &name));
     }
 }
 
