@@ -8,6 +8,10 @@ run:
 run-debug:
     cargo run --features debug-inspector
 
+# Run with Bevy dynamic linking for the fastest iterative dev builds.
+run-fast:
+    cargo run --features dynamic_linking
+
 # Build the project (debug configuration)
 build:
     cargo build
