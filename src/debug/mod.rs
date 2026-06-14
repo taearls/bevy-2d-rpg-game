@@ -174,6 +174,12 @@ fn enemy_list_ui(
 /// egui pass: if an entity is selected (and still alive), show a window with its
 /// component inspector. A despawned selection clears itself so the panel never
 /// dangles on a dead entity.
+///
+/// This is a world-exclusive system (`&mut World`) rather than one taking the
+/// `EguiContexts` system param like [`enemy_list_ui`], because
+/// `bevy_inspector::ui_for_entity` needs exclusive `&mut World` access to reflect
+/// and edit the entity's components — so the egui context is fetched by querying
+/// it out of the world here instead.
 fn inspected_entity_ui(world: &mut World) {
     let Some(entity) = world.resource::<InspectedEntity>().0 else {
         return;
