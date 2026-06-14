@@ -29,7 +29,7 @@ use bevy_2d_rpg_game::battle::enemy_turn::{
 use bevy_2d_rpg_game::battle::menu::{MenuSelection, menu_input, on_enter_player_turn};
 use bevy_2d_rpg_game::battle::messages::LogMessage;
 use bevy_2d_rpg_game::battle::rng::DamageRng;
-use bevy_2d_rpg_game::battle::state::{BattleSet, TurnPhase};
+use bevy_2d_rpg_game::battle::state::{BattleResult, BattleSet, TurnPhase};
 use bevy_2d_rpg_game::battle::targeting::{
     SelectedTarget, on_enter_targeting, on_exit_targeting, targeting_input,
 };
@@ -54,6 +54,7 @@ fn battle_app(enemy_count: usize) -> (App, Vec<Entity>, Entity) {
         .init_resource::<MenuSelection>()
         .init_resource::<SelectedTarget>()
         .init_resource::<EnemyTurnQueue>()
+        .init_resource::<BattleResult>()
         .init_state::<TurnPhase>()
         .add_message::<LogMessage>()
         .add_message::<AttackRequested>()

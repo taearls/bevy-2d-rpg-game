@@ -21,7 +21,7 @@ use menu::{
 };
 use messages::{LogMessage, render_log_messages};
 use spawn::{BattleLayout, Roster, load_roster, spawn_battle, spawn_selection_indicator};
-use state::{BattleSet, TurnPhase};
+use state::{BattleResult, BattleSet, TurnPhase};
 use targeting::{
     SelectedTarget, on_enter_targeting, on_exit_targeting, targeting_input, update_target_visuals,
 };
@@ -41,6 +41,7 @@ impl Plugin for BattlePlugin {
             .init_resource::<MenuSelection>()
             .init_resource::<SelectedTarget>()
             .init_resource::<EnemyTurnQueue>()
+            .init_resource::<BattleResult>()
             // Full-rectangle sprite hits, matching the Godot click areas, instead
             // of the default alpha-threshold test.
             .insert_resource(SpritePickingSettings {

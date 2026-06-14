@@ -13,7 +13,7 @@ use rand::Rng;
 use crate::battle::enemy_turn::EnemyTurnQueue;
 use crate::battle::messages::LogMessage;
 use crate::battle::rng::DamageRng;
-use crate::battle::state::TurnPhase;
+use crate::battle::state::{BattleResult, TurnPhase};
 use crate::characters::components::{
     CombatStats, DamageVariance, Defending, DisplayName, Enemy, Health, Player,
 };
@@ -111,13 +111,13 @@ pub fn on_died_hide_sprite(died: On<Died>, mut visibility: Query<&mut Visibility
 /// Runs only on a frame that produced a [`DamageDealt`] (gated by the caller),
 /// so it sees the world right after `apply_attacks`. The checks, in order:
 ///
-/// 1. **Defeat** — the player is dead: write "Game Over!", clear the
-///    [`EnemyTurnQueue`] so no further enemy attacks resolve, and move to
-///    [`BattleOver`](TurnPhase::BattleOver). Checked first so a blow that fells
-///    the player ends the battle even if it also happened to clear the last
-///    enemy.
-/// 2. **Victory** — every enemy is dead: write "Victory!" and move to
-///    `BattleOver`.
+/// 1. **Defeat** — the player is dead: write "Game Over!", record a losing
+///    [`BattleResult`], clear the [`EnemyTurnQueue`] so no further enemy attacks
+///    resolve, and move to [`BattleOver`](TurnPhase::BattleOver). Checked first
+///    so a blow that fells the player ends the battle even if it also happened
+///    to clear the last enemy.
+/// 2. **Victory** — every enemy is dead: write "Victory!", record a winning
+///    [`BattleResult`], and move to `BattleOver`.
 /// 3. **Player attack resolved, enemies remain** — only when we are leaving
 ///    [`Targeting`](TurnPhase::Targeting): hand the turn to the enemies via
 ///    [`EnemyTurn`](TurnPhase::EnemyTurn).
@@ -131,6 +131,7 @@ pub fn check_battle_end(
     enemies: Query<&Health, With<Enemy>>,
     player: Query<&Health, With<Player>>,
     mut queue: ResMut<EnemyTurnQueue>,
+    mut result: ResMut<BattleResult>,
     mut next_state: ResMut<NextState<TurnPhase>>,
     mut log: MessageWriter<LogMessage>,
 ) {
@@ -139,6 +140,7 @@ pub fn check_battle_end(
         log.write(LogMessage::new("Game Over!"));
         // Stop any enemies still queued behind the lethal blow.
         queue.pending.clear();
+        *result = BattleResult { victory: false };
         next_state.set(TurnPhase::BattleOver);
         return;
     }
@@ -146,6 +148,7 @@ pub fn check_battle_end(
     let all_enemies_dead = enemies.iter().all(|health| !health.is_alive());
     if all_enemies_dead {
         log.write(LogMessage::new("Victory!"));
+        *result = BattleResult { victory: true };
         next_state.set(TurnPhase::BattleOver);
         return;
     }

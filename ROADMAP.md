@@ -31,7 +31,8 @@ sequential (each blocked by the prior). Full design context in
   formula while the target carries `Defending` (cleared `OnEnter(PlayerTurn)`);
   `check_battle_end` extended with a player-death "Game Over!" branch
   (`BattleOver`, queue cleared so mid-queue death stops remaining attacks) and an
-  empty-queue hand-back to `PlayerTurn`; deterministic headless tests with
+  empty-queue hand-back to `PlayerTurn`, plus a queryable `BattleResult { victory }`
+  resource recording the outcome; deterministic headless tests with
   `TimeUpdateStrategy::ManualDuration` plus a full-loop `tests/battle_flow.rs`,
   `just ci` green.
 - ✅ [#5 — Phase 5: Targeting, player attack, and victory](../../issues/5) —

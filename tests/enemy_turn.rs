@@ -25,7 +25,7 @@ use bevy_2d_rpg_game::battle::enemy_turn::{
 use bevy_2d_rpg_game::battle::menu::{MenuSelection, on_enter_player_turn};
 use bevy_2d_rpg_game::battle::messages::LogMessage;
 use bevy_2d_rpg_game::battle::rng::DamageRng;
-use bevy_2d_rpg_game::battle::state::{BattleSet, TurnPhase};
+use bevy_2d_rpg_game::battle::state::{BattleResult, BattleSet, TurnPhase};
 use bevy_2d_rpg_game::characters::components::{
     CombatStats, DamageVariance, Defending, DisplayName, Enemy, Health, Player,
 };
@@ -47,6 +47,7 @@ fn enemy_turn_app(enemy_attacks: &[i32], player_hp: i32) -> (App, Vec<Entity>, E
     app.add_plugins((MinimalPlugins, StatesPlugin))
         .init_resource::<MenuSelection>()
         .init_resource::<EnemyTurnQueue>()
+        .init_resource::<BattleResult>()
         .init_state::<TurnPhase>()
         .add_message::<LogMessage>()
         .add_message::<AttackRequested>()
@@ -314,6 +315,10 @@ fn player_death_mid_queue_stops_remaining_attacks() {
         TurnPhase::BattleOver,
         "player death ends the battle"
     );
+    assert!(
+        !app.world().resource::<BattleResult>().victory,
+        "the recorded outcome is a defeat"
+    );
 
     // Advancing time fires no further attacks: the tick system is gated out of
     // BattleOver and the queue is empty regardless.
@@ -323,4 +328,39 @@ fn player_death_mid_queue_stops_remaining_attacks() {
         "no enemy attacks after the battle is over"
     );
     assert_eq!(current_phase(&app), TurnPhase::BattleOver);
+}
+
+/// Defensive guard: with no `Player` entity present there is nothing to attack,
+/// so the tick clears the queue and bails back to `PlayerTurn` rather than
+/// stalling forever in `EnemyTurn`. Exercises the otherwise-unreachable branch.
+#[test]
+fn missing_player_ends_the_turn_without_stalling() {
+    let (mut app, _enemies, player) = enemy_turn_app(&[10, 10], 100);
+    // Discard the immediate first attack from the build (player still present).
+    let _ = drain_damage(&mut app);
+
+    // Remove the player, then re-enter the turn so the tick runs with no target.
+    app.world_mut().entity_mut(player).despawn();
+    app.world_mut()
+        .resource_mut::<NextState<TurnPhase>>()
+        .set(TurnPhase::EnemyTurn);
+    app.update();
+
+    // The tick found no player: it cleared the queue and requested PlayerTurn,
+    // with no attack written and no panic. A settling frame applies the
+    // transition.
+    assert!(
+        drain_damage(&mut app).is_empty(),
+        "no attack is written when there is no player to target"
+    );
+    assert!(
+        app.world().resource::<EnemyTurnQueue>().pending.is_empty(),
+        "the queue is cleared when the turn cannot proceed"
+    );
+    advance(&mut app, 1);
+    assert_eq!(
+        current_phase(&app),
+        TurnPhase::PlayerTurn,
+        "the turn bails back to the player rather than stalling"
+    );
 }

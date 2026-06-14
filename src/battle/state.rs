@@ -14,6 +14,8 @@ use bevy::prelude::*;
 ///   enemy (player attack lands in Phase 5).
 /// - [`EnemyTurn`](Self::EnemyTurn): enemies act in index order (Phase 6).
 /// - [`BattleOver`](Self::BattleOver): victory or defeat; all input is disabled.
+///   The win/loss outcome itself is carried by [`BattleResult`], kept off the
+///   state enum so every `in_state(BattleOver)` gate stays a plain unit match.
 #[derive(States, Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 pub enum TurnPhase {
     #[default]
@@ -21,6 +23,20 @@ pub enum TurnPhase {
     Targeting,
     EnemyTurn,
     BattleOver,
+}
+
+/// The outcome of a finished battle, set the frame the battle ends and read
+/// thereafter (the Phase 7 HUD shows "Victory!" vs "Game Over!").
+///
+/// Carried as a resource rather than a field on [`TurnPhase::BattleOver`] so the
+/// state enum stays unit-only — `in_state(BattleOver)` and the `OnEnter`/`OnExit`
+/// wiring need no payload, while consumers that care about *which* ending
+/// occurred read this. `victory` is `true` when the player cleared the enemies,
+/// `false` when the player fell. Mirrors the Godot `BattleResult` the plan
+/// specified.
+#[derive(Resource, Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct BattleResult {
+    pub victory: bool,
 }
 
 /// The four phases every battle frame runs through, chained in `Update` so they
