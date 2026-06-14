@@ -19,7 +19,11 @@ thiserror = "2"
 bevy-inspector-egui = { version = "0.36", optional = true }
 
 [features]
-debug-inspector = ["dep:bevy-inspector-egui"]
+# `bevy/track_location` records the source location of the last change to each
+# component, which the inspector surfaces as a right-click "jump to code" on a
+# component. Scoped to this debug-only feature so release/test builds don't pay
+# the tracking cost.
+debug-inspector = ["dep:bevy-inspector-egui", "bevy/track_location"]
 # Dynamic linking gives the fastest iterative dev builds (Bevy's most impactful
 # compile-time optimization). Opt in with `cargo run --features dynamic_linking`
 # (or `just run-fast`). Never ship release builds with this enabled.

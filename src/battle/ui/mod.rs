@@ -24,7 +24,7 @@ use battle_log::{
 };
 use hud::{
     refresh_enemy_labels, refresh_player_hud, spawn_hud, sync_enemy_health_bars,
-    update_enemy_label_highlight,
+    sync_enemy_label_text, update_enemy_label_highlight,
 };
 
 use super::state::{BattleSet, TurnPhase};
@@ -98,6 +98,7 @@ impl Plugin for BattleUiPlugin {
                 (
                     refresh_player_hud,
                     refresh_enemy_labels,
+                    sync_enemy_label_text,
                     update_enemy_label_highlight,
                     sync_enemy_health_bars,
                     render_log_panel,

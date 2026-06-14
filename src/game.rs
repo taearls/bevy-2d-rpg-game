@@ -12,9 +12,9 @@ impl Plugin for GamePlugin {
         app.insert_resource(ClearColor(Color::srgb(0.18, 0.18, 0.24)))
             .add_plugins((CharactersPlugin, BattlePlugin));
 
-        // The egui debug inspector (F12 toggle) is compiled in only under the
-        // `debug-inspector` feature, so default/release builds and headless tests
-        // never link egui.
+        // The egui debug inspector (right-click a sprite to inspect it) is
+        // compiled in only under the `debug-inspector` feature, so default/release
+        // builds and headless tests never link egui.
         #[cfg(feature = "debug-inspector")]
         app.add_plugins(crate::debug::DebugPlugin);
     }

@@ -10,6 +10,8 @@
 //! ([`player_name_text`], [`hp_fill_fraction`]) are factored out so the
 //! `BattleUITest` parity cases assert text and percentages without a renderer.
 
+use std::collections::HashMap;
+
 use bevy::prelude::*;
 
 use crate::characters::components::{DisplayName, Enemy, EnemyHealthBar, Health, Player, Targeted};
@@ -160,7 +162,12 @@ pub fn spawn_hud(mut commands: Commands) {
 /// (with the "(defeated)" suffix when dead) and set the HP fill width to the
 /// health percentage. Mirrors Godot `UpdateHealth`'s player branch.
 pub fn refresh_player_hud(
-    player: Query<(&DisplayName, &Health), (With<Player>, Changed<Health>)>,
+    player: Query<
+        (&DisplayName, &Health),
+        // Also refresh on a name edit (e.g. from the debug inspector), not just a
+        // health change, so a `DisplayName` tweak updates the on-screen label live.
+        (With<Player>, Or<(Changed<Health>, Changed<DisplayName>)>),
+    >,
     mut name_label: Query<&mut Text, With<PlayerNameLabel>>,
     mut fill: Query<&mut Node, With<PlayerHpFill>>,
 ) {
@@ -198,6 +205,34 @@ pub fn refresh_enemy_labels(
         let dead = healths.get(*owner).is_ok_and(|h| !h.is_alive());
         if dead || healths.get(*owner).is_err() {
             commands.entity(label).despawn();
+        }
+    }
+}
+
+/// `BattleSet::Ui`: push an enemy's [`DisplayName`] into its world-space label
+/// when the name changes — e.g. when edited in the debug inspector — so the
+/// on-screen label tracks it live.
+///
+/// The label is a `Text2d` child carrying [`EnemyNameLabel`]`(owner)`; this maps
+/// each changed enemy to its new name, then walks the labels once and rewrites
+/// any whose owner changed. Gated on `Changed<DisplayName>`, so a steady state
+/// does no work; the single label pass keeps it linear rather than
+/// changed-enemies × labels.
+pub fn sync_enemy_label_text(
+    enemies: Query<(Entity, &DisplayName), (With<Enemy>, Changed<DisplayName>)>,
+    mut labels: Query<(&EnemyNameLabel, &mut Text2d)>,
+) {
+    if enemies.is_empty() {
+        return;
+    }
+    let renamed: HashMap<Entity, &str> = enemies
+        .iter()
+        .map(|(owner, DisplayName(name))| (owner, name.as_str()))
+        .collect();
+    for (EnemyNameLabel(owner), mut text) in &mut labels {
+        if let Some(name) = renamed.get(owner) {
+            text.0.clear();
+            text.0.push_str(name);
         }
     }
 }
