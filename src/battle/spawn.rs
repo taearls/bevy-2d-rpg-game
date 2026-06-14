@@ -30,7 +30,8 @@ pub const MAX_ENEMIES: usize = 4;
 /// Horizontal row layout for the enemy lineup, in Bevy world units (Y-up,
 /// origin at the window centre). The player sits at [`Self::player`]. These are
 /// the knobs the Phase 8 inspector tunes (Godot `[Export(Range)]` parity).
-#[derive(Resource, Debug, Clone, Copy, PartialEq)]
+#[derive(Resource, Reflect, Debug, Clone, Copy, PartialEq)]
+#[reflect(Resource)]
 pub struct BattleLayout {
     /// X of the first enemy (index 0).
     pub enemy_start_x: f32,

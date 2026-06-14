@@ -7,4 +7,6 @@
 pub mod battle;
 pub mod characters;
 pub mod combat;
+#[cfg(feature = "debug-inspector")]
+pub mod debug;
 pub mod game;

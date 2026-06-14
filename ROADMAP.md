@@ -15,14 +15,29 @@ sequential (each blocked by the prior). Full design context in
 | [#5](../../issues/5) | Phase 5: Targeting, player attack, and victory | 🟡 High | ~1 day | ✅ Done |
 | [#6](../../issues/6) | Phase 6: Enemy turn, Defend resolution, and game over | 🟡 High | ~1 day | ✅ Done |
 | [#7](../../issues/7) | Phase 7: HUD + battle log UI parity | 🟢 Medium | ~1 day | ✅ Done |
-| [#8](../../issues/8) | Phase 8: Debug inspector (bevy-inspector-egui) + polish | 🟢 Medium | ~0.5 day | Open |
+| [#8](../../issues/8) | Phase 8: Debug inspector (bevy-inspector-egui) + polish | 🟢 Medium | ~0.5 day | ✅ Done |
 
 ## Current Sprint
 
-**Next up:** [#8 — Phase 8: Debug inspector (bevy-inspector-egui) + polish](../../issues/8) (🟢 medium, unblocked now that #7 is done)
+**🎉 Port complete — all 8 phases shipped.** The Godot 4.6 C# turn-based RPG
+vertical slice is fully reimplemented in Bevy 0.18.1 at feature parity (see the
+[Parity audit](PORT_PLAN.md#parity-audit-phase-8) in PORT_PLAN.md). No open
+issues remain.
 
 ### Recently Completed
 
+- ✅ [#8 — Phase 8: Debug inspector (bevy-inspector-egui) + polish](../../issues/8) —
+  a `debug/mod.rs` `DebugPlugin` behind the `debug-inspector` cargo feature wiring
+  `EguiPlugin::default()` + `WorldInspectorPlugin` (bevy-inspector-egui 0.36 / the
+  Bevy 0.18 line) gated on an F12-toggled `InspectorEnabled` resource via `run_if`
+  (a no-op without a `RenderApp`, so headless `--all-features` tests stay green);
+  `#[derive(Reflect)]` + `register_type` on `BattleLayout`, `UiConfig`, `Health`,
+  `CombatStats`, and `DamageVariance` so every former Godot `[Export(Range)]` knob
+  is live-editable; a parity audit table in PORT_PLAN.md; README run-debug/F12
+  docs; and a finalized `tests/smoke.rs` driving the full `GamePlugin` stack
+  headless on a pinned seed (player + 1..=`MAX_ENEMIES` enemies spawn, 10 frames
+  run without panic) — `just ci` green and `cargo build` with no feature proving
+  egui compiles out entirely.
 - ✅ [#7 — Phase 7: HUD + battle log UI parity](../../issues/7) — a `BattleUiPlugin`
   driving the player name + percentage-width `PlayerHpFill`
   (`Val::Percent(100 * current/max)`, "(defeated)" suffix on death) off
@@ -90,11 +105,12 @@ independently with `just ci` green.
 
 ## Issue Status Summary
 
-- **Port phases:** 8 total — 7 done (#1, #2, #3, #4, #5, #6, #7), 1 open (#8); critical remaining: 0; high remaining: 0
+- **Port phases:** 8 total — 8 done (#1–#8), 0 open; critical remaining: 0; high remaining: 0; **milestone complete**
 - **Tooling & quality:** 1 total — 1 done (#10); all complete
 
 ## Changelog
 
+- **2026-06-13** — Completed Phase 8 (#8) — **port milestone complete**: `DebugPlugin` (`debug-inspector` feature) wiring `EguiPlugin` + `WorldInspectorPlugin` behind an F12-toggled `InspectorEnabled` resource (no-op without a `RenderApp` so headless `--all-features` tests pass); `#[derive(Reflect)]` + `register_type` on `BattleLayout`, `UiConfig`, `Health`, `CombatStats`, `DamageVariance`; a parity-audit table in PORT_PLAN.md; README run-debug/F12 docs; and a finalized full-stack seeded `tests/smoke.rs` (spawns a battle, runs 10 frames, no panic). `just ci` green; `cargo build` without the feature proves egui compiles out.
 - **2026-06-13** — Completed Phase 7 (#7): `BattleUiPlugin` HUD + battle log — player name/`PlayerHpFill` percentage bar with "(defeated)" suffix (`Changed<Health>`), dynamic alive-enemy labels with the `Targeted` yellow highlight, world-space enemy mini HP bars (track + scaled fill), a `LogMessage`-driven log panel, and a `UiConfig` swapping the centre panel 200 px ↔ 350 px (log shown during `EnemyTurn`/`BattleOver`, cleared `OnEnter(PlayerTurn)`) — with `tests/battle_ui.rs` mirroring `BattleUITest`.
 - **2026-06-13** — Completed Phase 6 (#6): `EnemyTurnQueue` + `tick_enemy_turn` (immediate first attack, 1.0 s gaps, empty-queue hand-back to `PlayerTurn`), `Defending` halving the attack value before the formula for one turn, and a player-death "Game Over!" branch in `check_battle_end` (`BattleOver`, queue cleared) — with deterministic `ManualDuration` tests and a full-loop `tests/battle_flow.rs`.
 - **2026-06-13** — Completed Phase 5 (#5): targeting cursor over alive enemies (cycle/wrap/cancel/confirm), `Targeted` tint + `Mesh2d(Triangle2d)` selection indicator, `AttackRequested`/`DamageDealt` messages + `Died` observer, `apply_attacks` + `check_battle_end` (Victory!), and click-to-attack sprite picking.
