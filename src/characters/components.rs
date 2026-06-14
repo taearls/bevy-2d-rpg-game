@@ -59,6 +59,16 @@ pub struct Defending;
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Targeted;
 
+/// The world-space mini HP bar's fill quad, parented under an enemy sprite and
+/// scaled along X by the owner's health fraction. `owner` is the enemy whose
+/// [`Health`] drives the fill, kept on the component so the HUD can scale each
+/// fill against the right entity without walking the parent hierarchy. Mirrors
+/// the Godot per-enemy `ProgressBar` child set up in `BattleCharacter`.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct EnemyHealthBar {
+    pub owner: Entity,
+}
+
 /// Offensive and defensive stats feeding the damage formula.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CombatStats {

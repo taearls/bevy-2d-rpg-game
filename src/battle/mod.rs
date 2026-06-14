@@ -10,6 +10,7 @@ pub mod seed;
 pub mod spawn;
 pub mod state;
 pub mod targeting;
+pub mod ui;
 
 use bevy::asset::LoadState;
 use bevy::prelude::*;
@@ -25,6 +26,7 @@ use state::{BattleResult, BattleSet, TurnPhase};
 use targeting::{
     SelectedTarget, on_enter_targeting, on_exit_targeting, targeting_input, update_target_visuals,
 };
+use ui::BattleUiPlugin;
 
 use crate::combat::events::{AttackRequested, DamageDealt};
 use crate::combat::resolve::{apply_attacks, check_battle_end, on_died_hide_sprite};
@@ -37,7 +39,8 @@ pub struct BattlePlugin;
 
 impl Plugin for BattlePlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<BattleLayout>()
+        app.add_plugins(BattleUiPlugin)
+            .init_resource::<BattleLayout>()
             .init_resource::<MenuSelection>()
             .init_resource::<SelectedTarget>()
             .init_resource::<EnemyTurnQueue>()
