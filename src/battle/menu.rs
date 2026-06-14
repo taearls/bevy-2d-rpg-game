@@ -27,9 +27,11 @@ const CURSOR_TEXT: &str = ">";
 const PANEL_BG_COLOR: Color = Color::srgb(0.12, 0.12, 0.16);
 /// White 2px border of the action-menu panel (the Godot `border_color`).
 const PANEL_BORDER_COLOR: Color = Color::WHITE;
-/// How far above the bottom of the screen the centred action-menu panel floats
-/// (the Godot `ActionMenuPanel` `offset_top = -170`).
-const PANEL_BOTTOM_OFFSET: f32 = 170.0;
+/// How far above the bottom of the screen the centred action-menu panel sits.
+/// Lower than the 160px info-pane height so the box's bottom edge overlaps the
+/// pane; a positive [`ZIndex`] then draws it in front of the dark bar for a
+/// layered look (rather than floating in the gap above it).
+const PANEL_BOTTOM_OFFSET: f32 = 80.0;
 
 /// The four menu actions, in display order. Index parity with the row layout and
 /// with the Godot `SetActions(Fight, Items, Defend, Flee)` ordering.
@@ -238,14 +240,18 @@ pub fn spawn_action_menu(mut commands: Commands) {
     // centring. The wrapper takes no space visually (no background); the
     // `ActionMenuPanel` child is the styled box that floats above the info pane.
     commands
-        .spawn(Node {
-            position_type: PositionType::Absolute,
-            bottom: Val::Px(PANEL_BOTTOM_OFFSET),
-            left: Val::Px(0.0),
-            width: Val::Percent(100.0),
-            justify_content: JustifyContent::Center,
-            ..default()
-        })
+        .spawn((
+            Node {
+                position_type: PositionType::Absolute,
+                bottom: Val::Px(PANEL_BOTTOM_OFFSET),
+                left: Val::Px(0.0),
+                width: Val::Percent(100.0),
+                justify_content: JustifyContent::Center,
+                ..default()
+            },
+            // Draw the menu box in front of the info pane it overlaps.
+            ZIndex(1),
+        ))
         .with_children(|wrapper| {
             wrapper
                 .spawn((

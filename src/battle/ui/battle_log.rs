@@ -24,9 +24,10 @@ const LOG_TEXT_COLOR: Color = Color::srgb(0.9, 0.9, 0.9);
 const LOG_PANEL_BG_COLOR: Color = Color::srgb(0.12, 0.12, 0.16);
 /// White 2px border matching the action-menu panel.
 const LOG_PANEL_BORDER_COLOR: Color = Color::WHITE;
-/// How far above the bottom of the screen the log panel floats — matches the
-/// action-menu panel so the two occupy the same slot when swapped.
-const LOG_PANEL_BOTTOM_OFFSET: f32 = 170.0;
+/// How far above the bottom of the screen the log panel sits — matches the
+/// action-menu panel so the two occupy the same slot (overlapping the info pane,
+/// drawn in front) when swapped.
+const LOG_PANEL_BOTTOM_OFFSET: f32 = 80.0;
 
 /// The container that holds the battle-log lines (the Godot
 /// `_battleMessageContainer`). Spawned hidden alongside the action menu; shown
@@ -69,6 +70,8 @@ pub fn spawn_battle_log(mut commands: Commands) {
                 justify_content: JustifyContent::Center,
                 ..default()
             },
+            // Draw the log box in front of the info pane it overlaps.
+            ZIndex(1),
             // Hidden until the enemy turn / battle end shows the log.
             Visibility::Hidden,
         ))
