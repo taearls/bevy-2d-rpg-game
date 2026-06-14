@@ -4,7 +4,7 @@ use crate::battle::BattlePlugin;
 use crate::characters::CharactersPlugin;
 
 /// Root plugin for the battle game: sets the clear color and wires in the
-/// character-asset and battle-spawning plugins. Later phases add `BattleUiPlugin`.
+/// character-asset and battle plugins (the latter pulls in the HUD/log UI).
 pub struct GamePlugin;
 
 impl Plugin for GamePlugin {

@@ -1,0 +1,343 @@
+//! Headless HUD + battle-log coverage, the Bevy analogue of the Godot
+//! `BattleUITest`.
+//!
+//! Every assertion is an ECS fact — `Text` contents, `Node.width`, a child
+//! count, a `TextColor`, a `Transform.scale` — never a pixel. The real UI
+//! systems are wired into a renderer-free `App` (`MinimalPlugins` + `StatesPlugin`):
+//! `spawn_hud` / `spawn_battle_log` build the tree, the `BattleSet::Ui`
+//! refreshers run each frame, and `clear_log_on_player_turn` runs on the
+//! `PlayerTurn` enter. As in the other UI suites, `InputPlugin` is omitted so a
+//! manually-set state is not disturbed, and the combat resolver is included so
+//! damage flows through `Changed<Health>` exactly as in play.
+
+use bevy::prelude::*;
+use bevy::state::app::StatesPlugin;
+
+use bevy_2d_rpg_game::battle::menu::{
+    ActionMenuPanel, MenuCursor, MenuSelection, spawn_action_menu, update_menu_highlight,
+};
+use bevy_2d_rpg_game::battle::messages::LogMessage;
+use bevy_2d_rpg_game::battle::state::{BattleSet, TurnPhase};
+use bevy_2d_rpg_game::battle::ui::UiConfig;
+use bevy_2d_rpg_game::battle::ui::battle_log::{
+    BattleLogContainer, clear_log_on_player_turn, render_log_panel, spawn_battle_log,
+    swap_panel_for_phase,
+};
+use bevy_2d_rpg_game::battle::ui::hud::{
+    EnemyNameLabel, PlayerHpFill, PlayerNameLabel, refresh_enemy_labels, refresh_player_hud,
+    spawn_hud, sync_enemy_health_bars, update_enemy_label_highlight,
+};
+use bevy_2d_rpg_game::characters::components::{
+    DisplayName, Enemy, EnemyHealthBar, Health, Player, Targeted,
+};
+
+/// Yellow target highlight, matched against an `EnemyNameLabel`'s `TextColor`.
+const HIGHLIGHT: Color = Color::srgb(1.0, 1.0, 0.0);
+const WHITE: Color = Color::WHITE;
+
+/// Build a headless app with the full HUD + log wiring and the menu panel, in
+/// `PlayerTurn`. Spawns one player and `enemy_healths.len()` enemies (index
+/// `0..n`) at the given starting HP, each with a mini HP bar child. Returns the
+/// app, the enemy entities, and the player entity.
+fn ui_app(enemy_healths: &[i32]) -> (App, Vec<Entity>, Entity) {
+    let mut app = App::new();
+    app.add_plugins((MinimalPlugins, StatesPlugin))
+        .init_resource::<MenuSelection>()
+        .init_resource::<UiConfig>()
+        .init_state::<TurnPhase>()
+        .add_message::<LogMessage>()
+        .configure_sets(
+            Update,
+            (
+                BattleSet::Input,
+                BattleSet::Resolve,
+                BattleSet::Cleanup,
+                BattleSet::Ui,
+            )
+                .chain(),
+        )
+        .add_systems(Startup, (spawn_hud, spawn_battle_log, spawn_action_menu))
+        .add_systems(OnEnter(TurnPhase::PlayerTurn), clear_log_on_player_turn)
+        .add_systems(
+            Update,
+            (
+                refresh_player_hud,
+                refresh_enemy_labels,
+                update_enemy_label_highlight,
+                sync_enemy_health_bars,
+                update_menu_highlight,
+                render_log_panel,
+                swap_panel_for_phase,
+            )
+                .in_set(BattleSet::Ui),
+        );
+
+    let player = app
+        .world_mut()
+        .spawn((Player, DisplayName("Hero".to_string()), Health::full(100)))
+        .id();
+
+    let enemies: Vec<Entity> = enemy_healths
+        .iter()
+        .enumerate()
+        .map(|(index, &hp)| {
+            let enemy = app
+                .world_mut()
+                .spawn((
+                    Enemy { index },
+                    DisplayName(format!("Goblin {index}")),
+                    Health {
+                        current: hp,
+                        max: 100,
+                    },
+                    Visibility::Visible,
+                ))
+                .id();
+            // The production path spawns the mini HP bar via `Commands`
+            // (`spawn_enemy_health_bar`); here we mirror its fill quad directly
+            // through the world spawner so `sync_enemy_health_bars` has a bar to
+            // scale. Only the fill (the entity that carries `EnemyHealthBar` and
+            // gets scaled) matters for these assertions.
+            app.world_mut().entity_mut(enemy).with_children(|parent| {
+                parent.spawn((
+                    EnemyHealthBar { owner: enemy },
+                    Sprite::from_color(Color::WHITE, Vec2::new(48.0, 6.0)),
+                    Transform::default(),
+                ));
+            });
+            enemy
+        })
+        .collect();
+
+    // Run a couple of frames so Startup spawns the tree and the first
+    // `Changed<Health>` refresh populates the HUD.
+    app.update();
+    app.update();
+    (app, enemies, player)
+}
+
+/// Set the current phase and let the transition + a UI frame apply.
+fn set_phase(app: &mut App, phase: TurnPhase) {
+    app.world_mut()
+        .resource_mut::<NextState<TurnPhase>>()
+        .set(phase);
+    app.update();
+    app.update();
+}
+
+fn text_of<C: Component>(app: &mut App) -> String {
+    let mut query = app.world_mut().query_filtered::<&Text, With<C>>();
+    query.single(app.world()).unwrap().0.clone()
+}
+
+/// The player HP fill width as a percent value, panicking if it is not a
+/// `Val::Percent`. Lets the assertions compare the fraction with a float
+/// tolerance rather than on exact `Val` equality (`100. * 60/100` is `60.000004`
+/// in f32).
+fn fill_percent(app: &mut App) -> f32 {
+    let mut q = app
+        .world_mut()
+        .query_filtered::<&Node, With<PlayerHpFill>>();
+    match q.single(app.world()).unwrap().width {
+        Val::Percent(p) => p,
+        other => panic!("expected the fill width to be a percent, got {other:?}"),
+    }
+}
+
+fn damage(app: &mut App, entity: Entity, amount: i32) {
+    let mut health = app.world_mut().entity_mut(entity);
+    let mut hp = health.get_mut::<Health>().unwrap();
+    hp.current = (hp.current - amount).max(0);
+}
+
+/// Damage moves the player HP fill width and the "(defeated)" suffix appears at
+/// zero HP (`BattleUITest` fill-percent + defeated-label parity).
+#[test]
+fn player_hud_reflects_damage_and_defeat() {
+    let (mut app, _enemies, player) = ui_app(&[100]);
+
+    // Full health: name bare, fill 100%.
+    assert_eq!(text_of::<PlayerNameLabel>(&mut app), "Hero");
+    assert!((fill_percent(&mut app) - 100.0).abs() < 1e-3);
+
+    // Take 40 damage → fill at 60%.
+    damage(&mut app, player, 40);
+    app.update();
+    assert!((fill_percent(&mut app) - 60.0).abs() < 1e-3);
+    assert_eq!(text_of::<PlayerNameLabel>(&mut app), "Hero");
+
+    // Lethal damage → fill empty, defeated suffix.
+    damage(&mut app, player, 60);
+    app.update();
+    assert!(fill_percent(&mut app).abs() < 1e-3);
+    assert_eq!(text_of::<PlayerNameLabel>(&mut app), "Hero (defeated)");
+}
+
+/// The alive-enemy label count drops when an enemy is defeated
+/// (`BattleUITest` label-count parity).
+#[test]
+fn enemy_label_count_drops_on_death() {
+    let (mut app, enemies, _player) = ui_app(&[100, 100, 100]);
+
+    let count = app
+        .world_mut()
+        .query::<&EnemyNameLabel>()
+        .iter(app.world())
+        .count();
+    assert_eq!(count, 3, "all three enemies are labelled while alive");
+
+    // Defeat the middle enemy.
+    damage(&mut app, enemies[1], 100);
+    app.update();
+    let count = app
+        .world_mut()
+        .query::<&EnemyNameLabel>()
+        .iter(app.world())
+        .count();
+    assert_eq!(count, 2, "the defeated enemy's label is removed");
+
+    // The remaining labels are the two living enemies, not the dead one.
+    let mut q = app.world_mut().query::<&EnemyNameLabel>();
+    let named: Vec<Entity> = q.iter(app.world()).map(|l| l.0).collect();
+    assert!(named.contains(&enemies[0]) && named.contains(&enemies[2]));
+    assert!(!named.contains(&enemies[1]));
+}
+
+/// The mini HP bar fill scales with the owner's health fraction.
+#[test]
+fn enemy_health_bar_fill_scales() {
+    let (mut app, enemies, _player) = ui_app(&[100]);
+
+    let scale_of = |app: &mut App| {
+        let mut q = app.world_mut().query::<(&EnemyHealthBar, &Transform)>();
+        q.iter(app.world()).next().unwrap().1.scale.x
+    };
+    assert!((scale_of(&mut app) - 1.0).abs() < f32::EPSILON);
+
+    damage(&mut app, enemies[0], 75);
+    app.update();
+    assert!((scale_of(&mut app) - 0.25).abs() < f32::EPSILON);
+}
+
+/// During targeting the enemy label under the cursor goes yellow and the menu
+/// cursor still shows on its row — "greys menu but keeps cursor". Leaving
+/// targeting clears the highlight ("hide-prompt restores colors").
+#[test]
+fn targeting_highlights_enemy_label_and_keeps_cursor() {
+    let (mut app, enemies, _player) = ui_app(&[100, 100]);
+
+    // Highlight row 0 in the menu and mark enemy 0 as targeted.
+    app.world_mut().resource_mut::<MenuSelection>().highlighted = Some(0);
+    app.world_mut().entity_mut(enemies[0]).insert(Targeted);
+    set_phase(&mut app, TurnPhase::Targeting);
+
+    // The targeted enemy's label is yellow; the other stays white.
+    let mut q = app.world_mut().query::<(&EnemyNameLabel, &TextColor)>();
+    for (EnemyNameLabel(entity), color) in q.iter(app.world()) {
+        if *entity == enemies[0] {
+            assert_eq!(color.0, HIGHLIGHT, "targeted enemy label is highlighted");
+        } else {
+            assert_eq!(color.0, WHITE, "untargeted enemy label stays white");
+        }
+    }
+
+    // The menu cursor on the highlighted row 0 is still visible (cursor kept).
+    let mut cursors = app.world_mut().query::<(&MenuCursor, &Visibility)>();
+    let row0_visible = cursors
+        .iter(app.world())
+        .any(|(MenuCursor(i), vis)| *i == 0 && *vis == Visibility::Visible);
+    assert!(row0_visible, "the menu cursor is kept on the selected row");
+
+    // Leave targeting (remove the marker, as on_exit_targeting would) → no
+    // label stays highlighted.
+    app.world_mut().entity_mut(enemies[0]).remove::<Targeted>();
+    set_phase(&mut app, TurnPhase::PlayerTurn);
+    let mut q = app.world_mut().query::<(&EnemyNameLabel, &TextColor)>();
+    assert!(
+        q.iter(app.world()).all(|(_, color)| color.0 == WHITE),
+        "leaving targeting clears every enemy highlight"
+    );
+}
+
+/// Log messages append as `Text` children of the container; entering the enemy
+/// turn widens the panel to 350 px and shows the log; returning to the player
+/// turn clears the log and restores the 200 px menu width.
+#[test]
+fn log_appends_and_panel_swaps_width() {
+    let (mut app, _enemies, _player) = ui_app(&[100]);
+
+    let log_child_count = |app: &mut App| {
+        let mut q = app
+            .world_mut()
+            .query_filtered::<Option<&Children>, With<BattleLogContainer>>();
+        q.single(app.world()).unwrap().map_or(0, Children::len)
+    };
+    let panel_width = |app: &mut App| {
+        let mut q = app
+            .world_mut()
+            .query_filtered::<&Node, With<ActionMenuPanel>>();
+        q.single(app.world()).unwrap().width
+    };
+
+    // Player turn: narrow 200 px panel, empty log.
+    assert_eq!(panel_width(&mut app), Val::Px(200.0));
+    assert_eq!(log_child_count(&mut app), 0);
+
+    // Two log lines arrive during the enemy turn.
+    set_phase(&mut app, TurnPhase::EnemyTurn);
+    app.world_mut()
+        .resource_mut::<Messages<LogMessage>>()
+        .write(LogMessage::new("Goblin 0 attacks Hero for 8 damage!"));
+    app.world_mut()
+        .resource_mut::<Messages<LogMessage>>()
+        .write(LogMessage::new("Hero takes the hit!"));
+    app.update();
+
+    assert_eq!(
+        log_child_count(&mut app),
+        2,
+        "both log lines append as children"
+    );
+    assert_eq!(
+        panel_width(&mut app),
+        Val::Px(350.0),
+        "log mode widens to 350 px"
+    );
+
+    // Back to the player turn: log cleared, panel restored to 200 px.
+    set_phase(&mut app, TurnPhase::PlayerTurn);
+    assert_eq!(
+        log_child_count(&mut app),
+        0,
+        "the log is cleared on the player turn"
+    );
+    assert_eq!(
+        panel_width(&mut app),
+        Val::Px(200.0),
+        "the menu width is restored"
+    );
+}
+
+/// A live `UiConfig` edit changes the active panel width the next frame — the
+/// inspector-tunable parity case.
+#[test]
+fn ui_config_edit_changes_panel_width() {
+    let (mut app, _enemies, _player) = ui_app(&[100]);
+
+    let panel_width = |app: &mut App| {
+        let mut q = app
+            .world_mut()
+            .query_filtered::<&Node, With<ActionMenuPanel>>();
+        q.single(app.world()).unwrap().width
+    };
+
+    // Default action-menu half-width 100 → 200 px panel.
+    assert_eq!(panel_width(&mut app), Val::Px(200.0));
+
+    // Widen the action-menu half-width to 150 → 300 px panel.
+    app.world_mut()
+        .resource_mut::<UiConfig>()
+        .action_menu_half_width = 150.0;
+    app.update();
+    assert_eq!(panel_width(&mut app), Val::Px(300.0));
+}

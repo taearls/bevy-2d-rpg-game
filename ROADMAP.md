@@ -14,15 +14,29 @@ sequential (each blocked by the prior). Full design context in
 | [#4](../../issues/4) | Phase 4: Turn states + action menu | 🟡 High | ~1 day | ✅ Done |
 | [#5](../../issues/5) | Phase 5: Targeting, player attack, and victory | 🟡 High | ~1 day | ✅ Done |
 | [#6](../../issues/6) | Phase 6: Enemy turn, Defend resolution, and game over | 🟡 High | ~1 day | ✅ Done |
-| [#7](../../issues/7) | Phase 7: HUD + battle log UI parity | 🟢 Medium | ~1 day | Open |
+| [#7](../../issues/7) | Phase 7: HUD + battle log UI parity | 🟢 Medium | ~1 day | ✅ Done |
 | [#8](../../issues/8) | Phase 8: Debug inspector (bevy-inspector-egui) + polish | 🟢 Medium | ~0.5 day | Open |
 
 ## Current Sprint
 
-**Next up:** [#7 — Phase 7: HUD + battle log UI parity](../../issues/7) (🟢 medium, unblocked now that #6 is done)
+**Next up:** [#8 — Phase 8: Debug inspector (bevy-inspector-egui) + polish](../../issues/8) (🟢 medium, unblocked now that #7 is done)
 
 ### Recently Completed
 
+- ✅ [#7 — Phase 7: HUD + battle log UI parity](../../issues/7) — a `BattleUiPlugin`
+  driving the player name + percentage-width `PlayerHpFill`
+  (`Val::Percent(100 * current/max)`, "(defeated)" suffix on death) off
+  `Changed<Health>`; dynamic alive-enemy name labels rebuilt on death with a
+  yellow highlight following the `Targeted` marker; world-space enemy mini HP
+  bars (track + fill quad scaled by health fraction under each sprite); a
+  battle-log panel spawning a `Text` child per `LogMessage` into
+  `BattleLogContainer`; and a `UiConfig { action_menu_half_width: 100.0,
+  battle_log_half_width: 175.0 }` swapping the centre panel 200 px ↔ 350 px
+  (menu shown in `PlayerTurn`/`Targeting`, log shown during
+  `EnemyTurn`/`BattleOver`, cleared `OnEnter(PlayerTurn)`); headless
+  `tests/battle_ui.rs` mirrors the GdUnit4 `BattleUITest` (fill percent,
+  defeated suffix, label-count drop, targeting highlight, log append + width
+  swap, live `UiConfig` edit), `just ci` green.
 - ✅ [#6 — Phase 6: Enemy turn, Defend resolution, and game over](../../issues/6) —
   an `EnemyTurnQueue { pending: VecDeque<Entity>, timer: Timer }` built
   `OnEnter(EnemyTurn)` from alive enemies in index order; a `tick_enemy_turn`
@@ -76,11 +90,12 @@ independently with `just ci` green.
 
 ## Issue Status Summary
 
-- **Port phases:** 8 total — 6 done (#1, #2, #3, #4, #5, #6), 2 open (#7–#8); critical remaining: 0; high remaining: 0
+- **Port phases:** 8 total — 7 done (#1, #2, #3, #4, #5, #6, #7), 1 open (#8); critical remaining: 0; high remaining: 0
 - **Tooling & quality:** 1 total — 1 done (#10); all complete
 
 ## Changelog
 
+- **2026-06-13** — Completed Phase 7 (#7): `BattleUiPlugin` HUD + battle log — player name/`PlayerHpFill` percentage bar with "(defeated)" suffix (`Changed<Health>`), dynamic alive-enemy labels with the `Targeted` yellow highlight, world-space enemy mini HP bars (track + scaled fill), a `LogMessage`-driven log panel, and a `UiConfig` swapping the centre panel 200 px ↔ 350 px (log shown during `EnemyTurn`/`BattleOver`, cleared `OnEnter(PlayerTurn)`) — with `tests/battle_ui.rs` mirroring `BattleUITest`.
 - **2026-06-13** — Completed Phase 6 (#6): `EnemyTurnQueue` + `tick_enemy_turn` (immediate first attack, 1.0 s gaps, empty-queue hand-back to `PlayerTurn`), `Defending` halving the attack value before the formula for one turn, and a player-death "Game Over!" branch in `check_battle_end` (`BattleOver`, queue cleared) — with deterministic `ManualDuration` tests and a full-loop `tests/battle_flow.rs`.
 - **2026-06-13** — Completed Phase 5 (#5): targeting cursor over alive enemies (cycle/wrap/cancel/confirm), `Targeted` tint + `Mesh2d(Triangle2d)` selection indicator, `AttackRequested`/`DamageDealt` messages + `Died` observer, `apply_attacks` + `check_battle_end` (Victory!), and click-to-attack sprite picking.
 - **2026-06-13** — Completed Phase 4 (#4): `TurnPhase` state machine + chained `BattleSet`s, Fight/Items/Defend/Flee action menu with yellow `>` cursor and wrap-around keyboard nav, `LogMessage`, and the `Defending` marker lifecycle.

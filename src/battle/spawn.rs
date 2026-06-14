@@ -21,6 +21,7 @@ use super::naming::suffix_duplicate_names;
 use super::rng::{DamageRng, SpawnRng};
 use super::seed::read_seed_file;
 use super::targeting::{SelectionIndicator, on_enemy_clicked};
+use super::ui::hud::spawn_enemy_health_bar;
 
 /// Maximum number of enemies a battle can spawn. The count is rolled inclusively
 /// in `1..=MAX_ENEMIES`, matching Godot `RandiRange(1, MaxEnemies)`.
@@ -204,7 +205,7 @@ pub fn spawn_enemies(
     entries: &[RosterEntry],
 ) {
     for (index, entry) in entries.iter().enumerate() {
-        commands
+        let enemy = commands
             .spawn((
                 Enemy { index },
                 Sprite::from_image(asset_server.load(entry.def.sprite.clone())),
@@ -220,7 +221,13 @@ pub fn spawn_enemies(
                 // a select-and-confirm during the `Targeting` phase.
                 Pickable::default(),
             ))
-            .observe(on_enemy_clicked);
+            .observe(on_enemy_clicked)
+            .id();
+        // The world-space mini HP bar rides under the sprite, scaled by the
+        // enemy's health fraction by the HUD's `sync_enemy_health_bars`.
+        commands
+            .entity(enemy)
+            .with_children(|parent| spawn_enemy_health_bar(parent, enemy));
     }
 }
 
