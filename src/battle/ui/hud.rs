@@ -160,7 +160,12 @@ pub fn spawn_hud(mut commands: Commands) {
 /// (with the "(defeated)" suffix when dead) and set the HP fill width to the
 /// health percentage. Mirrors Godot `UpdateHealth`'s player branch.
 pub fn refresh_player_hud(
-    player: Query<(&DisplayName, &Health), (With<Player>, Changed<Health>)>,
+    player: Query<
+        (&DisplayName, &Health),
+        // Also refresh on a name edit (e.g. from the debug inspector), not just a
+        // health change, so a `DisplayName` tweak updates the on-screen label live.
+        (With<Player>, Or<(Changed<Health>, Changed<DisplayName>)>),
+    >,
     mut name_label: Query<&mut Text, With<PlayerNameLabel>>,
     mut fill: Query<&mut Node, With<PlayerHpFill>>,
 ) {
@@ -198,6 +203,29 @@ pub fn refresh_enemy_labels(
         let dead = healths.get(*owner).is_ok_and(|h| !h.is_alive());
         if dead || healths.get(*owner).is_err() {
             commands.entity(label).despawn();
+        }
+    }
+}
+
+/// `BattleSet::Ui`: push an enemy's [`DisplayName`] into its world-space label
+/// when the name changes — e.g. when edited in the debug inspector — so the
+/// on-screen label tracks it live.
+///
+/// The label is a `Text2d` child carrying [`EnemyNameLabel`]`(owner)`; this maps
+/// each changed enemy to its label by `owner` and rewrites the text. Gated on
+/// `Changed<DisplayName>`, so a steady state does no work.
+pub fn sync_enemy_label_text(
+    enemies: Query<(Entity, &DisplayName), (With<Enemy>, Changed<DisplayName>)>,
+    mut labels: Query<(&EnemyNameLabel, &mut Text2d)>,
+) {
+    if enemies.is_empty() {
+        return;
+    }
+    for (owner, DisplayName(name)) in &enemies {
+        for (EnemyNameLabel(label_owner), mut text) in &mut labels {
+            if *label_owner == owner {
+                text.0.clone_from(name);
+            }
         }
     }
 }

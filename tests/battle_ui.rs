@@ -25,7 +25,7 @@ use bevy_2d_rpg_game::battle::ui::battle_log::{
 };
 use bevy_2d_rpg_game::battle::ui::hud::{
     EnemyNameLabel, PlayerHpFill, PlayerNameLabel, refresh_enemy_labels, refresh_player_hud,
-    spawn_hud, sync_enemy_health_bars, update_enemy_label_highlight,
+    spawn_hud, sync_enemy_health_bars, sync_enemy_label_text, update_enemy_label_highlight,
 };
 use bevy_2d_rpg_game::characters::components::{
     DisplayName, Enemy, EnemyHealthBar, Health, Player, Targeted,
@@ -63,6 +63,7 @@ fn ui_app(enemy_healths: &[i32]) -> (App, Vec<Entity>, Entity) {
             (
                 refresh_player_hud,
                 refresh_enemy_labels,
+                sync_enemy_label_text,
                 update_enemy_label_highlight,
                 sync_enemy_health_bars,
                 update_menu_highlight,
@@ -207,6 +208,39 @@ fn enemy_label_count_drops_on_death() {
     let named: Vec<Entity> = q.iter(app.world()).map(|l| l.0).collect();
     assert!(named.contains(&enemies[0]) && named.contains(&enemies[2]));
     assert!(!named.contains(&enemies[1]));
+}
+
+/// Editing an enemy's `DisplayName` (as the debug inspector does) updates its
+/// world-space label text live, via `sync_enemy_label_text`.
+#[test]
+fn enemy_label_tracks_display_name_edits() {
+    let (mut app, enemies, _player) = ui_app(&[100, 100]);
+
+    let label_text_of = |app: &mut App, owner: Entity| -> String {
+        let mut q = app.world_mut().query::<(&EnemyNameLabel, &Text2d)>();
+        q.iter(app.world())
+            .find(|(EnemyNameLabel(o), _)| *o == owner)
+            .map(|(_, text)| text.0.clone())
+            .unwrap()
+    };
+
+    assert_eq!(label_text_of(&mut app, enemies[0]), "Goblin 0");
+
+    // Rename enemy 0, as an inspector edit to its `DisplayName` would.
+    app.world_mut()
+        .entity_mut(enemies[0])
+        .get_mut::<DisplayName>()
+        .unwrap()
+        .0 = "Renamed".to_string();
+    app.update();
+
+    assert_eq!(
+        label_text_of(&mut app, enemies[0]),
+        "Renamed",
+        "the label tracks the edited display name"
+    );
+    // The untouched enemy's label is unchanged.
+    assert_eq!(label_text_of(&mut app, enemies[1]), "Goblin 1");
 }
 
 /// The mini HP bar fill scales with the owner's health fraction.
