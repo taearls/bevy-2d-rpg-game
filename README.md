@@ -30,10 +30,14 @@ This repo applies Bevy's [recommended build optimizations](https://bevy.org/lear
   (or `cargo run --features dynamic_linking`) gives the biggest iterative
   build-time win. It is opt-in only; never ship a release build with it enabled.
 - **`.cargo/config.toml`** mirroring Bevy's upstream `config_fast_builds.toml`.
-  LLD is already Rust's default linker on Linux, so no extra setup is needed
-  there; the file documents how to opt into [mold](https://github.com/rui314/mold)
-  (`sudo apt-get install mold clang`, then uncomment the mold line) and the
-  nightly-only `share-generics` / parallel-frontend / `no-embed-metadata` flags.
+  On Linux and macOS this file is **documentation-only today** — every linker and
+  nightly directive is commented out, and the toolchain defaults (LLD on Linux,
+  ld64 on macOS) are already the fast path, so it yields no build-time delta on
+  those platforms on its own. It is there to make opting into
+  [mold](https://github.com/rui314/mold) (`sudo apt-get install mold clang`, then
+  uncomment the mold line) and the nightly-only `share-generics` /
+  parallel-frontend / `no-embed-metadata` flags a one-line change. The only live
+  directive is `rust-lld` for the `x86_64-pc-windows-msvc` target.
 
 `just run-debug` builds with the `debug-inspector` feature; press **F12** in-game
 to open the [`bevy-inspector-egui`](https://github.com/jakobhellermann/bevy-inspector-egui)
