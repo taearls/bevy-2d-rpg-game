@@ -16,7 +16,7 @@ A turn-based RPG battle vertical slice built in [Bevy](https://bevyengine.org)
 
 ```sh
 just run            # launch the game window
-just run-debug      # launch with the egui debug inspector (F12 to toggle)
+just run-debug      # launch with the egui debug inspector (right-click a sprite to inspect)
 just run-fast       # launch with Bevy dynamic linking (fastest iterative builds)
 ```
 
@@ -39,13 +39,17 @@ This repo applies Bevy's [recommended build optimizations](https://bevy.org/lear
   parallel-frontend / `no-embed-metadata` flags a one-line change. The only live
   directive is `rust-lld` for the `x86_64-pc-windows-msvc` target.
 
-`just run-debug` builds with the `debug-inspector` feature; press **F12** in-game
-to open the [`bevy-inspector-egui`](https://github.com/jakobhellermann/bevy-inspector-egui)
-world inspector and live-tune the registered knobs — `BattleLayout` (enemy
-spacing/position), `UiConfig` (panel widths), and per-entity `Health` /
-`CombatStats` / `DamageVariance` — replacing the original's `[Export(Range)]`
-tuning. The feature is compiled out of `just run` and all tests, so egui never
-ships in a normal build.
+`just run-debug` builds with the `debug-inspector` feature. **Right-click any
+sprite** (or Control+left-click on a trackpad) to open a focused
+[`bevy-inspector-egui`](https://github.com/jakobhellermann/bevy-inspector-egui)
+panel showing just that entity's components, editable live — `BattleLayout`
+(enemy spacing/position), `UiConfig` (panel widths), and per-entity `Health` /
+`CombatStats` / `DamageVariance`, replacing the original's `[Export(Range)]`
+tuning. The panel is sticky (it follows the last-clicked entity until you click
+another); dismiss it with **Esc** or the window's **×**. An **Enemies** list
+window lets you pick a target without hunting for its sprite, and right-clicking
+a component jumps to the source line where it last changed. The feature is
+compiled out of `just run` and all tests, so egui never ships in a normal build.
 
 ## Development
 

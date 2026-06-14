@@ -4,7 +4,7 @@
 run:
     cargo run
 
-# Run the game with the egui debug inspector (F12 to toggle)
+# Run the game with the egui debug inspector (right-click a sprite to inspect)
 run-debug:
     cargo run --features debug-inspector
 
