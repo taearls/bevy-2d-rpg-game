@@ -66,6 +66,11 @@ impl Plugin for DebugPlugin {
 
         app.init_resource::<InspectedEntity>()
             .add_plugins(EguiPlugin::default())
+            // Registers the `InspectorEguiImpl`s for primitive types (String,
+            // usize, f32, …). Without it, component fields render as opaque
+            // "register an InspectorEguiImpl" notices instead of editable widgets.
+            // The removed `WorldInspectorPlugin` used to pull this in for us.
+            .add_plugins(bevy_inspector_egui::DefaultInspectorConfigPlugin)
             .add_observer(on_right_click_inspect)
             .add_systems(Update, (arm_sprite_picking, clear_on_escape))
             .add_systems(

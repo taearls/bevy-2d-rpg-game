@@ -28,7 +28,10 @@ use targeting::{
 };
 use ui::BattleUiPlugin;
 
-use crate::characters::components::{CombatStats, DamageVariance, Health};
+use crate::characters::components::{
+    CombatStats, DamageVariance, Defending, DisplayName, Enemy, EnemyHealthBar, Health, Player,
+    Targeted,
+};
 use crate::combat::events::{AttackRequested, DamageDealt};
 use crate::combat::resolve::{apply_attacks, check_battle_end, on_died_hide_sprite};
 
@@ -51,6 +54,14 @@ impl Plugin for BattlePlugin {
             .register_type::<Health>()
             .register_type::<CombatStats>()
             .register_type::<DamageVariance>()
+            // The remaining battle components, so every component on a combatant
+            // expands in the debug inspector rather than showing opaque.
+            .register_type::<Player>()
+            .register_type::<Enemy>()
+            .register_type::<DisplayName>()
+            .register_type::<Defending>()
+            .register_type::<Targeted>()
+            .register_type::<EnemyHealthBar>()
             .init_resource::<BattleLayout>()
             .init_resource::<MenuSelection>()
             .init_resource::<SelectedTarget>()

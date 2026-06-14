@@ -7,19 +7,22 @@
 use bevy::prelude::*;
 
 /// Marks the single player-controlled character.
-#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Component, Reflect, Debug, Clone, Copy, PartialEq, Eq)]
+#[reflect(Component)]
 pub struct Player;
 
 /// Marks an enemy combatant and records its slot in the spawned row. `index`
 /// runs `0..enemy_count` left-to-right and drives layout, enemy-turn ordering,
 /// and the Godot `EnemyIndex` parity used by targeting.
-#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Component, Reflect, Debug, Clone, Copy, PartialEq, Eq)]
+#[reflect(Component)]
 pub struct Enemy {
     pub index: usize,
 }
 
 /// Human-readable name shown in the HUD and battle log (e.g. `"Goblin A"`).
-#[derive(Component, Debug, Clone, PartialEq, Eq)]
+#[derive(Component, Reflect, Debug, Clone, PartialEq, Eq)]
+#[reflect(Component)]
 pub struct DisplayName(pub String);
 
 /// Current and maximum hit points. `current` is clamped to `0..=max` by the
@@ -49,7 +52,8 @@ impl Health {
 /// Defend action and removed `OnEnter(PlayerTurn)`. Phase 6 halves an incoming
 /// attack's value while this marker is present, mirroring the Godot
 /// `_lastPlayerAction == PlayerAction.Defend` check before the damage formula.
-#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Component, Reflect, Debug, Clone, Copy, PartialEq, Eq)]
+#[reflect(Component)]
 pub struct Defending;
 
 /// Marks the enemy currently under the targeting cursor. Drives the yellow
@@ -57,7 +61,8 @@ pub struct Defending;
 /// one alive enemy carries it while in [`Targeting`](crate::battle::state::TurnPhase::Targeting);
 /// it is removed when targeting ends (confirm or cancel). Mirrors the Godot
 /// `_selectedEnemy` highlight.
-#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Component, Reflect, Debug, Clone, Copy, PartialEq, Eq)]
+#[reflect(Component)]
 pub struct Targeted;
 
 /// The world-space mini HP bar's fill quad, parented under an enemy sprite and
@@ -65,7 +70,8 @@ pub struct Targeted;
 /// [`Health`] drives the fill, kept on the component so the HUD can scale each
 /// fill against the right entity without walking the parent hierarchy. Mirrors
 /// the Godot per-enemy `ProgressBar` child set up in `BattleCharacter`.
-#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Component, Reflect, Debug, Clone, Copy, PartialEq, Eq)]
+#[reflect(Component)]
 pub struct EnemyHealthBar {
     pub owner: Entity,
 }
