@@ -42,8 +42,11 @@ impl Plugin for BattlePlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(BattleUiPlugin)
             // Register the former Godot `[Export(Range)]` tuning knobs for
-            // reflection so the Phase 8 inspector can edit them live. Registration
-            // is cheap and feature-independent — only the inspector UI is gated.
+            // reflection so the Phase 8 inspector can edit them live. Registered
+            // here in the plugin that wires these types into the battle (the
+            // `UiConfig` knob is registered alongside in `BattleUiPlugin`).
+            // Registration is cheap and feature-independent — only the inspector
+            // UI is gated.
             .register_type::<BattleLayout>()
             .register_type::<Health>()
             .register_type::<CombatStats>()
