@@ -186,7 +186,12 @@ pub fn spawn_player(
 ) {
     commands.spawn((
         Player,
-        Sprite::from_image(asset_server.load(def.sprite.clone())),
+        // Mirror horizontally so the hero faces the enemies on the left, matching
+        // the Godot `HeroSprite` `flip_h = true`.
+        Sprite {
+            flip_x: true,
+            ..Sprite::from_image(asset_server.load(def.sprite.clone()))
+        },
         Transform::from_translation(position.extend(0.0)),
         DisplayName(def.display_name.clone()),
         Health::full(def.stats.max_health),
