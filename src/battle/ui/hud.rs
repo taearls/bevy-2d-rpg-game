@@ -7,7 +7,7 @@
 //! ECS state directly: the player HUD and enemy bars react to `Changed<Health>`,
 //! the enemy labels are rebuilt when the alive set changes, and the highlight
 //! follows the live [`Targeted`] marker. The pure label helpers
-//! ([`player_name_text`], [`enemy_fill_fraction`]) are factored out so the
+//! ([`player_name_text`], [`hp_fill_fraction`]) are factored out so the
 //! `BattleUITest` parity cases assert text and percentages without a renderer.
 
 use bevy::prelude::*;
@@ -35,8 +35,8 @@ const ENEMY_BAR_Y: f32 = 70.0;
 #[derive(Component, Debug)]
 pub struct HudRoot;
 
-/// The player's name `Text`, recoloured nothing but retitled with the
-/// "(defeated)" suffix on death.
+/// The player's name `Text`. Its colour is fixed; only its text changes,
+/// gaining the "(defeated)" suffix on death.
 #[derive(Component, Debug)]
 pub struct PlayerNameLabel;
 
@@ -67,11 +67,11 @@ pub fn player_name_text(name: &str, alive: bool) -> String {
     }
 }
 
-/// Fraction of an HP bar to fill, in `0.0..=1.0`. Guards a zero or negative
-/// `max` (which a malformed template could produce) by reading as empty rather
-/// than dividing by zero.
+/// Fraction of an HP bar to fill, in `0.0..=1.0` — shared by the player HP fill
+/// and the enemy mini bars. Guards a zero or negative `max` (which a malformed
+/// template could produce) by reading as empty rather than dividing by zero.
 #[must_use]
-pub fn enemy_fill_fraction(current: i32, max: i32) -> f32 {
+pub fn hp_fill_fraction(current: i32, max: i32) -> f32 {
     if max <= 0 {
         return 0.0;
     }
@@ -163,7 +163,7 @@ pub fn refresh_player_hud(
         text.0 = player_name_text(name, health.is_alive());
     }
     if let Ok(mut node) = fill.single_mut() {
-        let fraction = enemy_fill_fraction(health.current, health.max);
+        let fraction = hp_fill_fraction(health.current, health.max);
         node.width = Val::Percent(100.0 * fraction);
     }
 }
@@ -252,7 +252,7 @@ pub fn sync_enemy_health_bars(
         let Ok(health) = healths.get(bar.owner) else {
             continue;
         };
-        let fraction = enemy_fill_fraction(health.current, health.max);
+        let fraction = hp_fill_fraction(health.current, health.max);
         transform.scale.x = fraction;
         // Keep the left edge pinned: as the fill shrinks by `(1 - fraction)` of
         // its width, shift its centre left by half that amount.
@@ -297,18 +297,18 @@ mod tests {
     /// The fill fraction tracks current/max and clamps the edges.
     #[test]
     fn fill_fraction_tracks_and_clamps() {
-        assert!((enemy_fill_fraction(100, 100) - 1.0).abs() < f32::EPSILON);
-        assert!((enemy_fill_fraction(50, 100) - 0.5).abs() < f32::EPSILON);
-        assert!((enemy_fill_fraction(0, 100) - 0.0).abs() < f32::EPSILON);
+        assert!((hp_fill_fraction(100, 100) - 1.0).abs() < f32::EPSILON);
+        assert!((hp_fill_fraction(50, 100) - 0.5).abs() < f32::EPSILON);
+        assert!((hp_fill_fraction(0, 100) - 0.0).abs() < f32::EPSILON);
         // Over-full and negative are clamped into range.
-        assert!((enemy_fill_fraction(150, 100) - 1.0).abs() < f32::EPSILON);
-        assert!((enemy_fill_fraction(-10, 100) - 0.0).abs() < f32::EPSILON);
+        assert!((hp_fill_fraction(150, 100) - 1.0).abs() < f32::EPSILON);
+        assert!((hp_fill_fraction(-10, 100) - 0.0).abs() < f32::EPSILON);
     }
 
     /// A non-positive max reads as empty rather than dividing by zero.
     #[test]
     fn fill_fraction_guards_zero_max() {
-        assert!((enemy_fill_fraction(10, 0) - 0.0).abs() < f32::EPSILON);
-        assert!((enemy_fill_fraction(10, -5) - 0.0).abs() < f32::EPSILON);
+        assert!((hp_fill_fraction(10, 0) - 0.0).abs() < f32::EPSILON);
+        assert!((hp_fill_fraction(10, -5) - 0.0).abs() < f32::EPSILON);
     }
 }

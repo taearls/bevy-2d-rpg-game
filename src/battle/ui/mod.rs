@@ -1,10 +1,11 @@
 //! Battle HUD and on-screen log — the Bevy port of the Godot `BattleUI`.
 //!
-//! Three cooperating pieces, each in its own submodule:
+//! Two cooperating pieces, each in its own submodule:
 //! - [`hud`] — the player name + HP fill, the dynamic alive-enemy name labels
 //!   (with the targeting highlight), and the world-space enemy mini HP bars.
-//! - [`battle_log`] — the timestamped log lines spawned from `LogMessage`, plus
-//!   the menu↔log panel swap that widens the centre panel while the log shows.
+//! - [`battle_log`] — the log lines spawned one `Text` child per `LogMessage`,
+//!   plus the menu↔log panel swap that widens the centre panel while the log
+//!   shows.
 //!
 //! The Godot original drove these widgets off a `BattleEvents` signal bus with
 //! manual subscribe/disconnect bookkeeping; here every widget is a plain system
