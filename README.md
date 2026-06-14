@@ -19,6 +19,14 @@ just run            # launch the game window
 just run-debug      # launch with the egui debug inspector (F12 to toggle)
 ```
 
+`just run-debug` builds with the `debug-inspector` feature; press **F12** in-game
+to open the [`bevy-inspector-egui`](https://github.com/jakobhellermann/bevy-inspector-egui)
+world inspector and live-tune the registered knobs — `BattleLayout` (enemy
+spacing/position), `UiConfig` (panel widths), and per-entity `Health` /
+`CombatStats` / `DamageVariance` — replacing the original's `[Export(Range)]`
+tuning. The feature is compiled out of `just run` and all tests, so egui never
+ships in a normal build.
+
 ## Development
 
 ```sh

@@ -37,7 +37,8 @@ use super::state::{BattleSet, TurnPhase};
 /// battle log at `2 * battle_log_half_width` (350 px). Stored as half-widths to
 /// mirror the Godot `OffsetLeft = -half` / `OffsetRight = half` centring, so a
 /// live edit in the inspector maps one-to-one onto the original's behaviour.
-#[derive(Resource, Debug, Clone, Copy, PartialEq)]
+#[derive(Resource, Reflect, Debug, Clone, Copy, PartialEq)]
+#[reflect(Resource)]
 pub struct UiConfig {
     /// Half-width of the centre panel while the action menu is showing.
     pub action_menu_half_width: f32,
@@ -88,7 +89,8 @@ pub struct BattleUiPlugin;
 
 impl Plugin for BattleUiPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<UiConfig>()
+        app.register_type::<UiConfig>()
+            .init_resource::<UiConfig>()
             .add_systems(Startup, (spawn_hud, spawn_battle_log))
             .add_systems(OnEnter(TurnPhase::PlayerTurn), clear_log_on_player_turn)
             .add_systems(

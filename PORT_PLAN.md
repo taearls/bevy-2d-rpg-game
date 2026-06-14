@@ -157,3 +157,36 @@ Every phase: `just ci` (fmt-check + clippy -D warnings + test), then `just run` 
 - `../rpg-game/scenes/battle/BattleCharacter.cs` — damage application, tint, health bars
 - `../rpg-game/Resources/*.cs` + `*.tres` — data schema and instance values
 - `../rpg-game/justfile` — recipe parity target
+
+## Parity audit (Phase 8)
+
+Final audit of the Bevy port against the Godot original's feature inventory.
+Every phase shipped with `just ci` green; the table below maps each capability
+from the original to its Bevy implementation. Status: **all phases complete.**
+
+| Godot capability | Bevy implementation | Status |
+|------------------|---------------------|--------|
+| 1152×648 window, pixel-art sprites, clear color | `main.rs` `DefaultPlugins` + `ImagePlugin::default_nearest()` + `ClearColor` | ✅ |
+| Data-driven character stats (`.tres`) | `CharacterDef` `Asset` + `*.character.ron` `AssetLoader`, `hero`/`goblin` templates | ✅ |
+| Seeded spawn RNG (`battle.seed`) | `SpawnRng` (`ChaCha8Rng`), `read_seed_file`, `just shuffle`/`unshuffle` | ✅ |
+| 1–4 random enemies, duplicate-name suffixing | `roll_roster` (`1..=MAX_ENEMIES`), `suffix_duplicate_names` | ✅ |
+| Damage formula (variance, min-1, floor-0, Defend halving) | `combat::compute_damage` + `apply_attacks` (`DamageRng` variance, `Defending`) | ✅ |
+| Turn state machine | `TurnPhase` `States` + chained `BattleSet { Input, Resolve, Cleanup, Ui }` | ✅ |
+| Action menu (Fight/Items/Defend/Flee), `>` cursor, wrap nav | `menu.rs` keyboard nav gated `in_state(PlayerTurn)` | ✅ |
+| Keyboard targeting (cycle alive, wrap, cancel, confirm) | `targeting.rs` Left/Right/Escape/Enter | ✅ |
+| Mouse targeting (click selects + confirms) | `Pickable` + `on_enemy_clicked` observer → `try_select_target` (`BoundingBox`) | ✅ |
+| Selection indicator + targeted tint | `SelectionIndicator` `Mesh2d(Triangle2d)`, `Targeted` yellow tint | ✅ |
+| Enemy turn (queue, 1 s gaps, immediate first) | `EnemyTurnQueue` + `tick_enemy_turn` | ✅ |
+| Victory / game over | `check_battle_end` ("Victory!"/"Game Over!"), `BattleResult { victory }` | ✅ |
+| Event bus (`BattleEvents`) | `AttackRequested`/`DamageDealt`/`LogMessage` messages + `Died` observer | ✅ |
+| HUD: player name + HP fill ("(defeated)") | `BattleUiPlugin` `PlayerHpFill` off `Changed<Health>` | ✅ |
+| Dynamic enemy labels + target highlight | `refresh_enemy_labels` / `update_enemy_label_highlight` | ✅ |
+| World-space enemy mini HP bars | `EnemyHealthBar` track + scaled fill, `sync_enemy_health_bars` | ✅ |
+| Battle log + menu↔log panel swap (200 ↔ 350 px) | `render_log_panel`, `swap_panel_for_phase`, `UiConfig` | ✅ |
+| Custom F12 debug inspector addon, `[Export(Range)]` knobs | `DebugPlugin` (`debug-inspector` feature): `EguiPlugin` + `WorldInspectorPlugin`, F12 toggle, `register_type` on `BattleLayout`/`UiConfig`/`Health`/`CombatStats`/`DamageVariance` | ✅ |
+| GdUnit4 test suite | Headless `App` + pure unit tests across `tests/` and `src/`, `just ci` green | ✅ |
+
+**Intentional design departures** (documented in Context above, not parity gaps):
+the Godot signal bus is replaced by Bevy messages/observers, `Changed<T>`
+detection replaces the `HealthUpdated` signal, and `bevy-inspector-egui` replaces
+the bespoke inspector addon — same behaviour, idiomatic Bevy expression.

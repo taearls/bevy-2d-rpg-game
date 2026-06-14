@@ -24,7 +24,8 @@ pub struct DisplayName(pub String);
 
 /// Current and maximum hit points. `current` is clamped to `0..=max` by the
 /// combat systems; this component itself imposes no invariant on construction.
-#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Component, Reflect, Debug, Clone, Copy, PartialEq, Eq)]
+#[reflect(Component)]
 pub struct Health {
     pub current: i32,
     pub max: i32,
@@ -70,7 +71,8 @@ pub struct EnemyHealthBar {
 }
 
 /// Offensive and defensive stats feeding the damage formula.
-#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Component, Reflect, Debug, Clone, Copy, PartialEq, Eq)]
+#[reflect(Component)]
 pub struct CombatStats {
     pub attack: i32,
     pub defense: i32,
@@ -79,7 +81,8 @@ pub struct CombatStats {
 /// Per-character multiplicative damage spread. A roll is sampled uniformly from
 /// `[min, max]` each time the character deals damage. Defaults match the Godot
 /// `BattleCharacter` exports (0.8 / 1.2).
-#[derive(Component, Debug, Clone, Copy, PartialEq)]
+#[derive(Component, Reflect, Debug, Clone, Copy, PartialEq)]
+#[reflect(Component)]
 pub struct DamageVariance {
     pub min: f32,
     pub max: f32,
