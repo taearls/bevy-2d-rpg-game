@@ -247,12 +247,14 @@ fn targeting_highlights_enemy_label_and_keeps_cursor() {
         }
     }
 
-    // The menu cursor on the highlighted row 0 is still visible (cursor kept).
+    // The menu cursor on the highlighted row 0 is still shown (cursor kept). The
+    // highlighted cursor is `Inherited` rather than `Visible` so it tracks the
+    // panel's visibility; "kept" means simply "not explicitly hidden".
     let mut cursors = app.world_mut().query::<(&MenuCursor, &Visibility)>();
-    let row0_visible = cursors
+    let row0_shown = cursors
         .iter(app.world())
-        .any(|(MenuCursor(i), vis)| *i == 0 && *vis == Visibility::Visible);
-    assert!(row0_visible, "the menu cursor is kept on the selected row");
+        .any(|(MenuCursor(i), vis)| *i == 0 && *vis != Visibility::Hidden);
+    assert!(row0_shown, "the menu cursor is kept on the selected row");
 
     // Leave targeting (remove the marker, as on_exit_targeting would) → no
     // label stays highlighted.
@@ -262,6 +264,53 @@ fn targeting_highlights_enemy_label_and_keeps_cursor() {
     assert!(
         q.iter(app.world()).all(|(_, color)| color.0 == WHITE),
         "leaving targeting clears every enemy highlight"
+    );
+}
+
+/// The menu cursor tracks the action-menu panel: it is `Inherited` on the
+/// highlighted row (so it follows the panel's visibility) rather than an explicit
+/// `Visible` that would override the panel's `Hidden` and linger off-turn. When
+/// the enemy turn hides the panel, the cursor is masked along with it; the player
+/// turn shows it again.
+#[test]
+fn menu_cursor_follows_panel_visibility() {
+    let (mut app, _enemies, _player) = ui_app(&[100]);
+
+    // Row 0 is highlighted at the start of the player turn.
+    app.world_mut().resource_mut::<MenuSelection>().highlighted = Some(0);
+    app.update();
+
+    let panel_visibility = |app: &mut App| {
+        let mut q = app
+            .world_mut()
+            .query_filtered::<&Visibility, With<ActionMenuPanel>>();
+        *q.single(app.world()).unwrap()
+    };
+    let row0_cursor_visibility = |app: &mut App| {
+        let mut q = app.world_mut().query::<(&MenuCursor, &Visibility)>();
+        q.iter(app.world())
+            .find(|(MenuCursor(i), _)| *i == 0)
+            .map(|(_, vis)| *vis)
+            .unwrap()
+    };
+
+    // Player turn: panel visible, highlighted cursor inherits (so it shows).
+    set_phase(&mut app, TurnPhase::PlayerTurn);
+    assert_eq!(panel_visibility(&mut app), Visibility::Visible);
+    assert_eq!(
+        row0_cursor_visibility(&mut app),
+        Visibility::Inherited,
+        "the highlighted cursor inherits, so it shows while the panel is visible"
+    );
+
+    // Enemy turn: the panel hides, and because the cursor merely inherits it is
+    // masked rather than lingering.
+    set_phase(&mut app, TurnPhase::EnemyTurn);
+    assert_eq!(panel_visibility(&mut app), Visibility::Hidden);
+    assert_eq!(
+        row0_cursor_visibility(&mut app),
+        Visibility::Inherited,
+        "the cursor still only inherits — now resolving to hidden with the panel"
     );
 }
 
