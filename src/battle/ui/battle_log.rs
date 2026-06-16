@@ -13,6 +13,7 @@ use bevy::prelude::*;
 use crate::battle::menu::ActionMenuPanel;
 use crate::battle::messages::LogMessage;
 use crate::battle::state::TurnPhase;
+use crate::state::GameState;
 
 use super::{UiConfig, log_showing};
 
@@ -74,6 +75,7 @@ pub fn spawn_battle_log(mut commands: Commands) {
             ZIndex(1),
             // Hidden until the enemy turn / battle end shows the log.
             Visibility::Hidden,
+            DespawnOnExit(GameState::InBattle),
         ))
         .with_children(|wrapper| {
             wrapper.spawn((

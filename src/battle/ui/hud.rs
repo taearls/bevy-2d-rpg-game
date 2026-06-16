@@ -15,6 +15,7 @@ use std::collections::HashMap;
 use bevy::prelude::*;
 
 use crate::characters::components::{DisplayName, Enemy, EnemyHealthBar, Health, Player, Targeted};
+use crate::state::GameState;
 
 /// Yellow used to highlight the enemy name label under the targeting cursor.
 const HIGHLIGHT_COLOR: Color = Color::srgb(1.0, 1.0, 0.0);
@@ -117,6 +118,7 @@ pub fn spawn_hud(mut commands: Commands) {
                 ..default()
             },
             BackgroundColor(INFO_PANE_COLOR),
+            DespawnOnExit(GameState::InBattle),
         ))
         .with_children(|root| {
             // The player name over a fixed-width HP track + fill, matching the

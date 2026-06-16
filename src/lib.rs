@@ -10,5 +10,8 @@ pub mod combat;
 #[cfg(feature = "debug-inspector")]
 pub mod debug;
 pub mod game;
+pub mod game_over;
 pub mod main_menu;
+pub mod map;
+pub mod progress;
 pub mod state;
