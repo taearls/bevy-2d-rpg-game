@@ -38,6 +38,7 @@ use crate::characters::components::{
 };
 use crate::combat::events::{AttackRequested, DamageDealt};
 use crate::combat::resolve::{apply_attacks, check_battle_end, on_died_hide_sprite};
+use crate::state::GameState;
 
 /// Drives battle setup and turn flow: seeds the spawn RNG, loads the character
 /// roster, spawns the player + enemy lineup once the templates finish loading,
@@ -76,7 +77,9 @@ impl Plugin for BattlePlugin {
             .add_observer(on_died_hide_sprite)
             // The four battle phases run in a fixed order every frame: input
             // queues attacks, Resolve applies them, Cleanup decides the battle's
-            // fate, Ui redraws from the resulting world state.
+            // fate, Ui redraws from the resulting world state. The whole chain is
+            // gated on `InBattle` so none of it runs — and the keyboard isn't
+            // double-read against the main menu — while the start-up menu is up.
             .configure_sets(
                 Update,
                 (
@@ -85,11 +88,17 @@ impl Plugin for BattlePlugin {
                     BattleSet::Cleanup,
                     BattleSet::Ui,
                 )
-                    .chain(),
+                    .chain()
+                    .run_if(in_state(GameState::InBattle)),
             )
+            // Preload the roster at startup so the templates are resident the
+            // instant the player picks "New Game"; the combatant + action-menu
+            // entities, by contrast, are spawned only when a battle actually
+            // begins so they never sit behind the menu.
+            .add_systems(Startup, load_roster)
             .add_systems(
-                Startup,
-                (load_roster, spawn_action_menu, spawn_selection_indicator),
+                OnEnter(GameState::InBattle),
+                (spawn_action_menu, spawn_selection_indicator),
             )
             .add_systems(OnEnter(TurnPhase::PlayerTurn), on_enter_player_turn)
             .add_systems(OnEnter(TurnPhase::Targeting), on_enter_targeting)
@@ -99,7 +108,11 @@ impl Plugin for BattlePlugin {
                 Update,
                 (
                     report_roster_load_failures,
-                    spawn_battle.run_if(roster_ready.and(run_once)),
+                    spawn_battle.run_if(
+                        in_state(GameState::InBattle)
+                            .and(roster_ready)
+                            .and(run_once),
+                    ),
                     menu_input
                         .in_set(BattleSet::Input)
                         .run_if(in_state(TurnPhase::PlayerTurn)),
