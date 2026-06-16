@@ -138,11 +138,13 @@ pub fn load_roster(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.insert_resource(DamageRng::from_entropy());
 }
 
-/// Spawn the player and a freshly rolled enemy row, plus the 2D camera.
+/// Spawn the player and a freshly rolled enemy row.
 ///
 /// Reads the `SpawnRng` and `BattleLayout` resources and the loaded `hero` /
 /// `goblin` templates from [`Roster`], then defers entity creation to
-/// [`spawn_player`] / [`spawn_enemies`]. Runs once at startup.
+/// [`spawn_player`] / [`spawn_enemies`]. Runs once, when a battle starts. The 2D
+/// camera is spawned globally by `GamePlugin` (shared with the menu), so it is
+/// not created here.
 pub fn spawn_battle(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
@@ -151,8 +153,6 @@ pub fn spawn_battle(
     roster: Res<Roster>,
     defs: Res<Assets<CharacterDef>>,
 ) {
-    commands.spawn(Camera2d);
-
     let Some(hero) = defs.get(&roster.hero) else {
         error!("hero template missing; skipping spawn");
         return;

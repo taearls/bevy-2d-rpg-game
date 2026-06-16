@@ -28,6 +28,7 @@ use hud::{
 };
 
 use super::state::{BattleSet, TurnPhase};
+use crate::state::GameState;
 
 /// Tunable panel half-widths, the Phase 8 inspector's parity for the Godot
 /// `BattleUI` `[Export(Range)]` knobs (`ActionMenuHalfWidth` / `BattleLogHalfWidth`).
@@ -82,16 +83,19 @@ pub fn log_showing(phase: TurnPhase) -> bool {
     matches!(phase, TurnPhase::EnemyTurn | TurnPhase::BattleOver)
 }
 
-/// Wires the battle HUD and log: spawns the static UI tree at startup and runs
-/// the per-frame refreshers in [`BattleSet::Ui`], so the HUD always reflects the
-/// world state the resolve/cleanup phases just produced.
+/// Wires the battle HUD and log: spawns the static UI tree when a battle starts
+/// ([`OnEnter(InBattle)`](GameState::InBattle)) and runs the per-frame refreshers
+/// in [`BattleSet::Ui`], so the HUD always reflects the world state the
+/// resolve/cleanup phases just produced.
 pub struct BattleUiPlugin;
 
 impl Plugin for BattleUiPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<UiConfig>()
             .init_resource::<UiConfig>()
-            .add_systems(Startup, (spawn_hud, spawn_battle_log))
+            // Spawn the HUD/log tree when a battle starts, not at startup, so it
+            // never sits behind the main menu before "New Game" is chosen.
+            .add_systems(OnEnter(GameState::InBattle), (spawn_hud, spawn_battle_log))
             .add_systems(OnEnter(TurnPhase::PlayerTurn), clear_log_on_player_turn)
             .add_systems(
                 Update,

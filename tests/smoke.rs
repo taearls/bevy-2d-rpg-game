@@ -16,6 +16,7 @@ use bevy::state::app::StatesPlugin;
 use bevy_2d_rpg_game::battle::rng::SpawnRng;
 use bevy_2d_rpg_game::characters::components::{Enemy, Player};
 use bevy_2d_rpg_game::game::GamePlugin;
+use bevy_2d_rpg_game::state::GameState;
 
 /// Build the headless battle app on a fixed seed.
 ///
@@ -69,11 +70,19 @@ fn full_stack_spawns_seeded_battle_and_runs_ten_frames() {
     let mut app = battle_app();
 
     // First frame runs `Startup` (incl. `load_roster`, which inserts an entropy
-    // `SpawnRng`); pin a fixed seed afterwards so the roster roll is deterministic
-    // when `spawn_battle` later reads it. The async load is still in flight, so
-    // the spawn has not consumed the RNG yet.
+    // `SpawnRng`) and the initial transition into `GameState::MainMenu`; pin a
+    // fixed seed afterwards so the roster roll is deterministic when
+    // `spawn_battle` later reads it. The async load is still in flight, so the
+    // spawn has not consumed the RNG yet.
     app.update();
     app.insert_resource(SpawnRng::from_seed(42));
+
+    // The game boots into the main menu and only spawns a battle on entering
+    // `InBattle` (the menu's "New Game"); drive that transition so the combatants
+    // and battle UI come up.
+    app.world_mut()
+        .resource_mut::<NextState<GameState>>()
+        .set(GameState::InBattle);
 
     // The async `*.character.ron` loader needs a few frames before the
     // roster-ready gate opens and `spawn_battle` runs; give it generous headroom.
