@@ -66,8 +66,12 @@ lto = "fat"
 codegen-units = 1
 # Drop panic-unwinding tables; wasm aborts on panic anyway.
 panic = "abort"
-# Strip symbols from the final binary.
-strip = true
+# NOTE: deliberately *not* setting `strip = true`. Stripping removes the wasm
+# `target_features` custom section, which `wasm-opt` reads to learn which wasm
+# features (bulk-memory, non-trapping float-to-int, …) the binary uses. Without
+# it `wasm-opt` falls back to the MVP feature set and rejects the bundle. The
+# Trunk release pipeline (wasm-bindgen + `wasm-opt -Oz`) already strips debug
+# and name sections, so cargo-level stripping adds little for wasm anyway.
 
 [lints.clippy]
 # Opt into clippy::pedantic for maintainability/style enforcement. priority = -1

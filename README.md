@@ -58,9 +58,10 @@ browser's `crypto.getRandomValues` (see the `wasm32` config in `Cargo.toml` and
 web build has no local filesystem, so it always rolls fresh entropy.
 
 The bundle is built with a dedicated size-optimized `wasm-release` cargo profile
-(`opt-level = "s"`, fat LTO, one codegen unit, `panic = "abort"`, symbols
-stripped) plus `wasm-opt -Oz`, so only the native desktop `release` profile
-keeps `opt-level = 3` for runtime speed.
+(`opt-level = "s"`, fat LTO, one codegen unit, `panic = "abort"`) plus
+`wasm-opt -Oz` (Trunk's wasm-bindgen step strips the debug and name sections),
+so only the native desktop `release` profile keeps `opt-level = 3` for runtime
+speed.
 
 ### Faster compiles
 
