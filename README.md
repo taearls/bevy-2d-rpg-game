@@ -5,6 +5,16 @@ A turn-based RPG battle vertical slice built in [Bevy](https://bevyengine.org)
 [PORT_PLAN.md](PORT_PLAN.md) for the full design and the phased
 [ROADMAP.md](ROADMAP.md) for status.
 
+## Gameplay
+
+The game boots into a **main menu** (New Game / Options / Credits). Picking
+**New Game** drops you onto an **overworld map** — walk the avatar around with
+the **arrow keys or WASD**. Wandering far enough triggers a **random encounter**,
+switching to a **turn-based battle**. Winning returns you to the map with your
+hit points carried over (damage persists between fights); losing takes you to a
+**game-over screen** that offers "Restart Game" (back to the map at full health)
+or "Return to Title Screen".
+
 ## Requirements
 
 - Rust (edition 2024 — toolchain 1.85+) via [rustup](https://rustup.rs)

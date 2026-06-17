@@ -250,3 +250,43 @@ fn report_roster_load_failures(
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use bevy::ecs::system::RunSystemOnce;
+
+    use super::*;
+
+    /// The `battle_unspawned` spawn gate must re-arm once the combatants are gone.
+    ///
+    /// On the first entry into `InBattle` no player exists, so the gate is open
+    /// (`spawn_battle` runs); once a player is present it closes for the rest of
+    /// the fight. Because combatants are `DespawnOnExit(InBattle)`, leaving the
+    /// battle empties the player query again, which must re-open the gate so the
+    /// *next* map encounter spawns a fresh lineup. This locks in that round-trip
+    /// without standing up the async asset loader.
+    #[test]
+    fn battle_unspawned_gate_rearms_after_player_despawns() {
+        let mut world = World::new();
+
+        // No combatants yet (first encounter): the gate is open.
+        assert!(
+            world.run_system_once(battle_unspawned).unwrap(),
+            "an empty world spawns a battle"
+        );
+
+        // A player is on screen (mid-fight): the gate is closed.
+        let player = world.spawn(Player).id();
+        assert!(
+            !world.run_system_once(battle_unspawned).unwrap(),
+            "a present player keeps the battle from re-spawning"
+        );
+
+        // Battle ended → `DespawnOnExit(InBattle)` removed the player: re-armed.
+        world.despawn(player);
+        assert!(
+            world.run_system_once(battle_unspawned).unwrap(),
+            "the next encounter re-opens the gate once the player is gone"
+        );
+    }
+}
