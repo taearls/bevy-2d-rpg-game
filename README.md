@@ -33,32 +33,37 @@ just run-fast       # launch with Bevy dynamic linking (fastest iterative builds
 ## Play in the browser
 
 The latest `main` is built to WebAssembly and deployed to **Cloudflare Pages**
-on every push. The site is **gated behind a shared passphrase** so it is not
-publicly accessible or scrapeable — a Cloudflare Pages Function
-([`functions/_middleware.js`](functions/_middleware.js)) checks the passphrase
-server-side at the edge and never serves the game files (not even the `.wasm`)
-to unauthenticated requests.
+on every push. The site is **gated by Cloudflare Access (Zero Trust)** with
+email login restricted to an allow-list, so only approved addresses can reach
+it. Access is enforced at Cloudflare's edge in front of the site — visitors are
+sent to Cloudflare's login page, receive a one-time code by email, and are only
+let through if their address is on the policy. No game files are served to
+unauthenticated visitors.
 
-Default URL once deployed: **`https://bevy-2d-rpg-game.pages.dev`** (enter the
-passphrase to play).
+Default URL once deployed: **`https://bevy-2d-rpg-game.pages.dev`**.
 
-> **One-time setup (Cloudflare Pages):**
+> **One-time setup:**
 >
-> 1. Create a Cloudflare Pages project (Direct Upload / Wrangler) named
->    `bevy-2d-rpg-game` (matching [`wrangler.toml`](wrangler.toml)).
-> 2. On that project, set two environment variables:
->    - `SITE_PASSPHRASE` — the passphrase players must enter.
->    - `COOKIE_SECRET` — any long random string (signs the auth cookie).
-> 3. Add two GitHub repository secrets (**Settings → Secrets and variables →
->    Actions**): `CLOUDFLARE_API_TOKEN` (a token with the *Cloudflare Pages:
->    Edit* permission) and `CLOUDFLARE_ACCOUNT_ID`.
+> 1. **Pages project** — create a Cloudflare Pages project (Direct Upload /
+>    Wrangler) named `bevy-2d-rpg-game` (matching [`wrangler.toml`](wrangler.toml)).
+> 2. **GitHub secrets** (**Settings → Secrets and variables → Actions**):
+>    `CLOUDFLARE_API_TOKEN` (a token with the *Cloudflare Pages: Edit*
+>    permission) and `CLOUDFLARE_ACCOUNT_ID`. The
+>    [`deploy-cloudflare`](.github/workflows/deploy-cloudflare.yml) workflow
+>    then builds and redeploys on each push to `main`.
+> 3. **Cloudflare Access policy** — in the Cloudflare **Zero Trust** dashboard:
+>    - Under **Settings → Authentication → Login methods**, ensure
+>      **One-time PIN** is enabled (emails a code; no identity provider needed).
+>    - Under **Access → Applications**, add a **Self-hosted** application whose
+>      domain is `bevy-2d-rpg-game.pages.dev` (add your custom domain too if you
+>      use one).
+>    - Give it one policy: **Action: Allow**, **Include → Emails →** your
+>      address. Access denies everyone not matched, so this restricts the site
+>      to exactly the listed address(es). Add more emails later to share access,
+>      or remove one to revoke it.
 >
-> The [`deploy-cloudflare`](.github/workflows/deploy-cloudflare.yml) workflow
-> then builds and redeploys on each push to `main`.
->
-> Note: the passphrase is enforced server-side, but it is a single shared
-> secret — anyone you give it to can access (and, while authenticated, download)
-> the build. It is not per-user authentication.
+> This is real per-user authentication: access is tied to an email you control
+> and can be revoked at any time by editing the policy.
 
 To build or serve the web version locally you need the wasm target and
 [`trunk`](https://trunkrs.dev):
