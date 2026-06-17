@@ -30,6 +30,33 @@ just run-debug      # launch with the egui debug inspector (right-click a sprite
 just run-fast       # launch with Bevy dynamic linking (fastest iterative builds)
 ```
 
+## Play in the browser
+
+The latest `main` is built to WebAssembly and published to GitHub Pages on
+every push — no install required:
+
+**<https://taearls.github.io/bevy-2d-rpg-game/>**
+
+> One-time repo setup: in **Settings → Pages**, set **Source** to
+> **GitHub Actions**. The [`deploy-web`](.github/workflows/deploy-web.yml)
+> workflow then redeploys on each push to `main`.
+
+To build or serve the web version locally you need the wasm target and
+[`trunk`](https://trunkrs.dev):
+
+```sh
+rustup target add wasm32-unknown-unknown
+cargo install trunk
+
+just run-web        # serve at http://127.0.0.1:8080 with hot reload
+just build-web      # produce an optimized bundle in ./dist
+```
+
+The browser build uses Bevy's WebGL2 backend and routes RNG entropy through the
+browser's `crypto.getRandomValues` (see the `wasm32` config in `Cargo.toml` and
+`.cargo/config.toml`). The optional `battle.seed` pinning is desktop-only — the
+web build has no local filesystem, so it always rolls fresh entropy.
+
 ### Faster compiles
 
 This repo applies Bevy's [recommended build optimizations](https://bevy.org/learn/quick-start/getting-started/setup/):

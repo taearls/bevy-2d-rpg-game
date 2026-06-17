@@ -1,0 +1,17 @@
+# Trunk configuration for the WebAssembly (browser) build.
+# Docs: https://trunkrs.dev
+#
+# Build:  trunk build --release        (outputs to ./dist)
+# Serve:  trunk serve                  (local dev server at 127.0.0.1:8080)
+#
+# The GitHub Pages workflow passes `--public-url /bevy-2d-rpg-game/` so asset
+# URLs resolve under the project page path. Local `trunk serve` uses the
+# default root path, so no override is needed here.
+
+[build]
+target = "index.html"
+dist = "dist"
+
+[serve]
+address = "127.0.0.1"
+port = 8080
