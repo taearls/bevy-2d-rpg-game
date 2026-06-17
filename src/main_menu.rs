@@ -9,14 +9,15 @@
 //! duplicating it; only the row set (three options) and the confirm dispatch
 //! differ.
 //!
-//! New Game transitions [`GameState`] to [`InBattle`](GameState::InBattle),
-//! which spawns the battle. Options and Credits are intentionally non-functional
-//! for now: confirming either logs a "not yet implemented" line and leaves the
-//! player on the menu.
+//! New Game resets [`PlayerProgress`] and drops the player onto the overworld
+//! [`Map`](GameState::Map), where a random encounter starts the first battle.
+//! Options and Credits are intentionally non-functional for now: confirming
+//! either logs a "not yet implemented" line and leaves the player on the menu.
 
 use bevy::prelude::*;
 
 use crate::battle::menu::{CycleDirection, cycle_index};
+use crate::progress::PlayerProgress;
 use crate::state::GameState;
 
 /// Yellow used for the cursor and the highlighted row label (matches the battle
@@ -177,6 +178,7 @@ pub fn main_menu_input(
     keys: Res<ButtonInput<KeyCode>>,
     mut selection: ResMut<MainMenuSelection>,
     mut next_state: ResMut<NextState<GameState>>,
+    mut progress: ResMut<PlayerProgress>,
 ) {
     let count = MenuOption::ALL.len();
 
@@ -201,7 +203,7 @@ pub fn main_menu_input(
         }
         Some(KeyCode::Enter) => {
             if let Some(index) = selection.highlighted {
-                confirm_option(MenuOption::ALL[index], &mut next_state);
+                confirm_option(MenuOption::ALL[index], &mut next_state, &mut progress);
             }
         }
         _ => {}
@@ -210,11 +212,19 @@ pub fn main_menu_input(
 
 /// Run the chosen option. Split out so headless tests can invoke it directly.
 ///
-/// New Game starts a battle by switching to [`GameState::InBattle`]; Options and
-/// Credits are not implemented yet and merely log, leaving the menu in place.
-fn confirm_option(option: MenuOption, next_state: &mut NextState<GameState>) {
+/// New Game resets the carried-over health and drops the player onto the map by
+/// switching to [`GameState::Map`]; Options and Credits are not implemented yet
+/// and merely log, leaving the menu in place.
+fn confirm_option(
+    option: MenuOption,
+    next_state: &mut NextState<GameState>,
+    progress: &mut PlayerProgress,
+) {
     match option {
-        MenuOption::NewGame => next_state.set(GameState::InBattle),
+        MenuOption::NewGame => {
+            progress.reset();
+            next_state.set(GameState::Map);
+        }
         MenuOption::Options => info!("Options menu is not yet implemented."),
         MenuOption::Credits => info!("Credits screen is not yet implemented."),
     }

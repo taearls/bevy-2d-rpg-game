@@ -16,6 +16,8 @@ use crate::characters::components::{
     CombatStats, DamageVariance, DisplayName, Enemy, Health, Player,
 };
 use crate::characters::definition::CharacterDef;
+use crate::progress::PlayerProgress;
+use crate::state::GameState;
 
 use super::naming::suffix_duplicate_names;
 use super::rng::{DamageRng, SpawnRng};
@@ -152,12 +154,26 @@ pub fn spawn_battle(
     layout: Res<BattleLayout>,
     roster: Res<Roster>,
     defs: Res<Assets<CharacterDef>>,
+    progress: Res<PlayerProgress>,
 ) {
     let Some(hero) = defs.get(&roster.hero) else {
         error!("hero template missing; skipping spawn");
         return;
     };
-    spawn_player(&mut commands, &asset_server, hero, layout.player);
+    // Carry the player's hit points over from the last battle: a victory persists
+    // the surviving health into `PlayerProgress`, so this fight starts from that
+    // total rather than full. `None` (a fresh game before the template loaded)
+    // falls back to full health.
+    let current_health = progress
+        .health
+        .map_or(hero.stats.max_health, |health| health.current);
+    spawn_player(
+        &mut commands,
+        &asset_server,
+        hero,
+        layout.player,
+        current_health,
+    );
 
     let enemy_defs: Vec<CharacterDef> = roster
         .enemies
@@ -177,13 +193,21 @@ pub fn spawn_battle(
     spawn_enemies(&mut commands, &asset_server, &layout, &entries);
 }
 
-/// Spawn the player entity from its template at `position`.
+/// Spawn the player entity from its template at `position`, starting at
+/// `current_health` hit points (clamped to `0..=max`).
+///
+/// `current_health` lets a battle resume from the player's carried-over health
+/// (see [`PlayerProgress`]); pass the template's max for a full-health spawn. The
+/// entity is `DespawnOnExit(InBattle)` so it is torn down when the battle ends and
+/// re-spawned fresh on the next encounter.
 pub fn spawn_player(
     commands: &mut Commands,
     asset_server: &AssetServer,
     def: &CharacterDef,
     position: Vec2,
+    current_health: i32,
 ) {
+    let max = def.stats.max_health;
     commands.spawn((
         Player,
         // Mirror horizontally so the hero faces the enemies on the left, matching
@@ -194,12 +218,16 @@ pub fn spawn_player(
         },
         Transform::from_translation(position.extend(0.0)),
         DisplayName(def.display_name.clone()),
-        Health::full(def.stats.max_health),
+        Health {
+            current: current_health.clamp(0, max),
+            max,
+        },
         CombatStats {
             attack: def.stats.attack,
             defense: def.stats.defense,
         },
         DamageVariance::default(),
+        DespawnOnExit(GameState::InBattle),
     ));
 }
 
@@ -226,6 +254,7 @@ pub fn spawn_enemies(
                 // Clickable for mouse targeting; the observer turns a click into
                 // a select-and-confirm during the `Targeting` phase.
                 Pickable::default(),
+                DespawnOnExit(GameState::InBattle),
             ))
             .observe(on_enemy_clicked)
             .id();
@@ -264,6 +293,7 @@ pub fn spawn_selection_indicator(
         Transform::default(),
         // Revealed by `update_target_visuals` once an enemy is targeted.
         Visibility::Hidden,
+        DespawnOnExit(GameState::InBattle),
     ));
 }
 

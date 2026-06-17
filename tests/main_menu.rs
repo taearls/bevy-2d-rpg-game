@@ -18,6 +18,7 @@ use bevy_2d_rpg_game::main_menu::{
     MainMenuCursor, MainMenuLabel, MainMenuRoot, MainMenuSelection, despawn_main_menu,
     main_menu_input, spawn_main_menu, update_main_menu_highlight,
 };
+use bevy_2d_rpg_game::progress::PlayerProgress;
 use bevy_2d_rpg_game::state::GameState;
 
 /// Build a headless app with the top-level state and main-menu systems wired,
@@ -28,6 +29,7 @@ fn menu_app() -> App {
     app.add_plugins((MinimalPlugins, StatesPlugin))
         .init_resource::<ButtonInput<KeyCode>>()
         .init_resource::<MainMenuSelection>()
+        .init_resource::<PlayerProgress>()
         .init_state::<GameState>()
         .add_systems(OnEnter(GameState::MainMenu), spawn_main_menu)
         .add_systems(OnExit(GameState::MainMenu), despawn_main_menu)
@@ -136,15 +138,15 @@ fn arrow_up_wraps_backward() {
 }
 
 #[test]
-fn new_game_enters_battle_and_tears_down_the_menu() {
+fn new_game_enters_map_and_tears_down_the_menu() {
     let mut app = menu_app();
     // Row 0 = New Game is highlighted on entry.
     press(&mut app, KeyCode::Enter);
 
     assert_eq!(
         current_state(&app),
-        GameState::InBattle,
-        "New Game switches to the battle state"
+        GameState::Map,
+        "New Game drops the player onto the overworld map"
     );
     let roots = app
         .world_mut()

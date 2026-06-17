@@ -28,16 +28,15 @@ use targeting::{
 };
 use ui::BattleUiPlugin;
 
-use crate::characters::components::{CombatStats, DamageVariance, Health};
+use crate::characters::components::{CombatStats, DamageVariance, Health, Player};
 // Marker / label components — only registered for reflection under the debug
 // inspector, so their import is gated to the same feature to keep a default
 // build free of unused-import warnings.
 #[cfg(feature = "debug-inspector")]
-use crate::characters::components::{
-    Defending, DisplayName, Enemy, EnemyHealthBar, Player, Targeted,
-};
+use crate::characters::components::{Defending, DisplayName, Enemy, EnemyHealthBar, Targeted};
 use crate::combat::events::{AttackRequested, DamageDealt};
 use crate::combat::resolve::{apply_attacks, check_battle_end, on_died_hide_sprite};
+use crate::progress::PlayerProgress;
 use crate::state::GameState;
 
 /// Drives battle setup and turn flow: seeds the spawn RNG, loads the character
@@ -98,8 +97,13 @@ impl Plugin for BattlePlugin {
             .add_systems(Startup, load_roster)
             .add_systems(
                 OnEnter(GameState::InBattle),
-                (spawn_action_menu, spawn_selection_indicator),
+                (
+                    reset_turn_phase,
+                    spawn_action_menu,
+                    spawn_selection_indicator,
+                ),
             )
+            .add_systems(OnEnter(TurnPhase::BattleOver), log_continue_hint)
             .add_systems(OnEnter(TurnPhase::PlayerTurn), on_enter_player_turn)
             .add_systems(OnEnter(TurnPhase::Targeting), on_enter_targeting)
             .add_systems(OnExit(TurnPhase::Targeting), on_exit_targeting)
@@ -111,8 +115,10 @@ impl Plugin for BattlePlugin {
                     spawn_battle.run_if(
                         in_state(GameState::InBattle)
                             .and(roster_ready)
-                            .and(run_once),
+                            .and(battle_unspawned),
                     ),
+                    battle_over_input
+                        .run_if(in_state(GameState::InBattle).and(in_state(TurnPhase::BattleOver))),
                     menu_input
                         .in_set(BattleSet::Input)
                         .run_if(in_state(TurnPhase::PlayerTurn)),
@@ -151,6 +157,63 @@ impl Plugin for BattlePlugin {
     }
 }
 
+/// Gate that turns true while no combatants are spawned, so [`spawn_battle`] runs
+/// exactly once per entry into [`GameState::InBattle`].
+///
+/// Replaces a global `run_once`: because the combatants are
+/// `DespawnOnExit(InBattle)`, the player query is empty again on the next
+/// encounter, re-opening this gate so each battle spawns a fresh lineup. Once the
+/// player exists the gate closes for the rest of that fight.
+fn battle_unspawned(players: Query<(), With<Player>>) -> bool {
+    players.is_empty()
+}
+
+/// `OnEnter(InBattle)`: reset the per-battle turn flow to the player's turn.
+///
+/// A finished battle leaves [`TurnPhase`] on [`BattleOver`](TurnPhase::BattleOver);
+/// re-entering a battle (from a fresh map encounter) must rewind it so the action
+/// menu accepts input again. Setting the same value on the very first battle —
+/// where it is already [`PlayerTurn`](TurnPhase::PlayerTurn) — is a harmless
+/// no-op.
+pub fn reset_turn_phase(mut next: ResMut<NextState<TurnPhase>>) {
+    next.set(TurnPhase::PlayerTurn);
+}
+
+/// `OnEnter(BattleOver)`: prompt the player to acknowledge the result, which
+/// [`battle_over_input`] then acts on. Appended to the existing "Victory!" /
+/// "Game Over!" line that `check_battle_end` already logged.
+fn log_continue_hint(mut log: MessageWriter<LogMessage>) {
+    log.write(LogMessage::new("Press Enter to continue."));
+}
+
+/// `Update`, in `InBattle` + [`BattleOver`](TurnPhase::BattleOver): on Enter,
+/// leave the battle for the right next screen.
+///
+/// A victory persists the player's surviving [`Health`] into [`PlayerProgress`]
+/// (so it carries into the next encounter) and returns to the
+/// [`Map`](GameState::Map); a defeat moves to the
+/// [`GameOver`](GameState::GameOver) screen. The combatants and battle UI are torn
+/// down by their `DespawnOnExit(InBattle)` tagging as the state changes.
+pub fn battle_over_input(
+    keys: Res<ButtonInput<KeyCode>>,
+    result: Res<BattleResult>,
+    mut progress: ResMut<PlayerProgress>,
+    mut next_state: ResMut<NextState<GameState>>,
+    player: Query<&Health, With<Player>>,
+) {
+    if !keys.just_pressed(KeyCode::Enter) {
+        return;
+    }
+    if result.victory {
+        if let Ok(health) = player.single() {
+            progress.health = Some(*health);
+        }
+        next_state.set(GameState::Map);
+    } else {
+        next_state.set(GameState::GameOver);
+    }
+}
+
 /// Gate that turns true once every roster template has finished loading, so the
 /// one-shot spawn does not run against missing or failed assets.
 fn roster_ready(roster: Option<Res<Roster>>, asset_server: Res<AssetServer>) -> bool {
@@ -185,5 +248,45 @@ fn report_roster_load_failures(
             );
             *reported = true;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use bevy::ecs::system::RunSystemOnce;
+
+    use super::*;
+
+    /// The `battle_unspawned` spawn gate must re-arm once the combatants are gone.
+    ///
+    /// On the first entry into `InBattle` no player exists, so the gate is open
+    /// (`spawn_battle` runs); once a player is present it closes for the rest of
+    /// the fight. Because combatants are `DespawnOnExit(InBattle)`, leaving the
+    /// battle empties the player query again, which must re-open the gate so the
+    /// *next* map encounter spawns a fresh lineup. This locks in that round-trip
+    /// without standing up the async asset loader.
+    #[test]
+    fn battle_unspawned_gate_rearms_after_player_despawns() {
+        let mut world = World::new();
+
+        // No combatants yet (first encounter): the gate is open.
+        assert!(
+            world.run_system_once(battle_unspawned).unwrap(),
+            "an empty world spawns a battle"
+        );
+
+        // A player is on screen (mid-fight): the gate is closed.
+        let player = world.spawn(Player).id();
+        assert!(
+            !world.run_system_once(battle_unspawned).unwrap(),
+            "a present player keeps the battle from re-spawning"
+        );
+
+        // Battle ended → `DespawnOnExit(InBattle)` removed the player: re-armed.
+        world.despawn(player);
+        assert!(
+            world.run_system_once(battle_unspawned).unwrap(),
+            "the next encounter re-opens the gate once the player is gone"
+        );
     }
 }

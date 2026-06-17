@@ -11,6 +11,7 @@
 use bevy::prelude::*;
 
 use crate::characters::components::{Defending, DisplayName, Player};
+use crate::state::GameState;
 
 use super::messages::LogMessage;
 use super::state::TurnPhase;
@@ -268,6 +269,7 @@ pub fn spawn_action_menu(mut commands: Commands) {
             },
             // Draw the menu box in front of the info pane it overlaps.
             ZIndex(1),
+            DespawnOnExit(GameState::InBattle),
         ))
         .with_children(|wrapper| {
             wrapper

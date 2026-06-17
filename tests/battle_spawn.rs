@@ -73,7 +73,8 @@ fn spawns_one_player_with_template_stats() {
     app.world_mut()
         .run_system_once(
             move |mut commands: Commands, asset_server: Res<AssetServer>| {
-                spawn_player(&mut commands, &asset_server, &hero, layout.player);
+                let max = hero.stats.max_health;
+                spawn_player(&mut commands, &asset_server, &hero, layout.player, max);
             },
         )
         .unwrap();
