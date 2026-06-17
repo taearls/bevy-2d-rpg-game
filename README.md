@@ -32,14 +32,33 @@ just run-fast       # launch with Bevy dynamic linking (fastest iterative builds
 
 ## Play in the browser
 
-The latest `main` is built to WebAssembly and published to GitHub Pages on
-every push — no install required:
+The latest `main` is built to WebAssembly and deployed to **Cloudflare Pages**
+on every push. The site is **gated behind a shared passphrase** so it is not
+publicly accessible or scrapeable — a Cloudflare Pages Function
+([`functions/_middleware.js`](functions/_middleware.js)) checks the passphrase
+server-side at the edge and never serves the game files (not even the `.wasm`)
+to unauthenticated requests.
 
-**<https://taearls.github.io/bevy-2d-rpg-game/>**
+Default URL once deployed: **`https://bevy-2d-rpg-game.pages.dev`** (enter the
+passphrase to play).
 
-> One-time repo setup: in **Settings → Pages**, set **Source** to
-> **GitHub Actions**. The [`deploy-web`](.github/workflows/deploy-web.yml)
-> workflow then redeploys on each push to `main`.
+> **One-time setup (Cloudflare Pages):**
+>
+> 1. Create a Cloudflare Pages project (Direct Upload / Wrangler) named
+>    `bevy-2d-rpg-game` (matching [`wrangler.toml`](wrangler.toml)).
+> 2. On that project, set two environment variables:
+>    - `SITE_PASSPHRASE` — the passphrase players must enter.
+>    - `COOKIE_SECRET` — any long random string (signs the auth cookie).
+> 3. Add two GitHub repository secrets (**Settings → Secrets and variables →
+>    Actions**): `CLOUDFLARE_API_TOKEN` (a token with the *Cloudflare Pages:
+>    Edit* permission) and `CLOUDFLARE_ACCOUNT_ID`.
+>
+> The [`deploy-cloudflare`](.github/workflows/deploy-cloudflare.yml) workflow
+> then builds and redeploys on each push to `main`.
+>
+> Note: the passphrase is enforced server-side, but it is a single shared
+> secret — anyone you give it to can access (and, while authenticated, download)
+> the build. It is not per-user authentication.
 
 To build or serve the web version locally you need the wasm target and
 [`trunk`](https://trunkrs.dev):
