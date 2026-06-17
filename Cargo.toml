@@ -51,6 +51,24 @@ debug = 1
 [profile.dev.package."*"]
 opt-level = 3
 
+# Size-optimized profile for the WebAssembly bundle, kept separate from the
+# native `release` profile (which stays at opt-level 3 for runtime speed). The
+# Trunk build / Pages deploy select it with `--cargo-profile wasm-release`.
+# These flags shrink the `.wasm` the browser has to download:
+[profile.wasm-release]
+inherits = "release"
+# Optimize for size rather than raw speed — fine for a turn-based RPG.
+opt-level = "s"
+# Whole-program link-time optimization strips cross-crate dead code.
+lto = "fat"
+# A single codegen unit lets the optimizer see the whole crate (smaller output,
+# slower compile — acceptable for a deploy build).
+codegen-units = 1
+# Drop panic-unwinding tables; wasm aborts on panic anyway.
+panic = "abort"
+# Strip symbols from the final binary.
+strip = true
+
 [lints.clippy]
 # Opt into clippy::pedantic for maintainability/style enforcement. priority = -1
 # lets the individual allow-backs below (default priority 0) override the group.

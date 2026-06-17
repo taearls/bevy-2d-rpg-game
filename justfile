@@ -25,9 +25,9 @@ build-release:
 run-web:
     trunk serve --open
 
-# Build the optimized WebAssembly bundle into ./dist (same output as the Pages deploy).
+# Build the size-optimized WebAssembly bundle into ./dist (same output as the Pages deploy).
 build-web:
-    trunk build --release --public-url /bevy-2d-rpg-game/
+    trunk build --release --cargo-profile wasm-release --public-url /bevy-2d-rpg-game/
 
 # Run all tests. Pass `just test verbose` for per-test output.
 test verbosity="quiet":

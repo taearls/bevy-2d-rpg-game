@@ -49,7 +49,7 @@ jobs:
           tool: trunk
 
       - name: Build release wasm bundle
-        run: trunk build --release --public-url "$PUBLIC_URL"
+        run: trunk build --release --cargo-profile wasm-release --public-url "$PUBLIC_URL"
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

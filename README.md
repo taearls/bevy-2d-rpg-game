@@ -57,6 +57,11 @@ browser's `crypto.getRandomValues` (see the `wasm32` config in `Cargo.toml` and
 `.cargo/config.toml`). The optional `battle.seed` pinning is desktop-only — the
 web build has no local filesystem, so it always rolls fresh entropy.
 
+The bundle is built with a dedicated size-optimized `wasm-release` cargo profile
+(`opt-level = "s"`, fat LTO, one codegen unit, `panic = "abort"`, symbols
+stripped) plus `wasm-opt -Oz`, so only the native desktop `release` profile
+keeps `opt-level = 3` for runtime speed.
+
 ### Faster compiles
 
 This repo applies Bevy's [recommended build optimizations](https://bevy.org/learn/quick-start/getting-started/setup/):
