@@ -183,7 +183,7 @@ pub fn setup_map(
 
     // A short instruction line, top-centre.
     commands.spawn((
-        Text::new("Explore with arrow keys / WASD — a battle may find you."),
+        Text::new("Explore with arrow keys / WASD - a battle may find you."),
         TextFont {
             font_size: 20.0,
             ..default()
