@@ -1,3 +1,4 @@
 /target
 /dist
 battle.seed
+.playwright-mcp/
