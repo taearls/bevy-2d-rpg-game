@@ -10,20 +10,26 @@ name = "bevy_2d_rpg_game"
 path = "src/lib.rs"
 
 [dependencies]
-bevy = "0.18.1"
+bevy = "0.19"
 rand = "0.9"
 rand_chacha = "0.9"
 serde = { version = "1", features = ["derive"] }
 ron = "0.12"
 thiserror = "2"
-bevy-inspector-egui = { version = "0.36", optional = true }
+# TODO(bevy 0.19): bevy-inspector-egui has no Bevy 0.19-compatible release yet
+# (it targets 0.18 on both crates.io and git main as of this migration), so the
+# `debug-inspector` feature is disabled below. Re-enable both once a compatible
+# version ships.
+# bevy-inspector-egui = { version = "0.36", optional = true }
 
 [features]
 # `bevy/track_location` records the source location of the last change to each
 # component, which the inspector surfaces as a right-click "jump to code" on a
 # component. Scoped to this debug-only feature so release/test builds don't pay
 # the tracking cost.
-debug-inspector = ["dep:bevy-inspector-egui", "bevy/track_location"]
+# TODO(bevy 0.19): re-enable once bevy-inspector-egui supports Bevy 0.19 (see the
+# commented-out dependency above).
+# debug-inspector = ["dep:bevy-inspector-egui", "bevy/track_location"]
 # Dynamic linking gives the fastest iterative dev builds (Bevy's most impactful
 # compile-time optimization). Opt in with `cargo run --features dynamic_linking`
 # (or `just run-fast`). Never ship release builds with this enabled.
@@ -39,6 +45,14 @@ debug = 1
 # Enable a large amount of optimization in the dev profile for dependencies.
 [profile.dev.package."*"]
 opt-level = 3
+
+[lints.rust]
+# The `debug-inspector` feature is temporarily commented out (see the dependency
+# section) because bevy-inspector-egui has no Bevy 0.19 release yet. The
+# `#[cfg(feature = "debug-inspector")]` gates in the source stay in place so the
+# feature can be restored in one step; declare the cfg here so they don't warn as
+# "unexpected" while the feature is disabled.
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("debug-inspector"))'] }
 
 [lints.clippy]
 # Opt into clippy::pedantic for maintainability/style enforcement. priority = -1

@@ -301,7 +301,7 @@ pub fn spawn_enemy_health_bar(parent: &mut ChildSpawnerCommands, owner: Entity, 
         EnemyNameLabel(owner),
         Text2d::new(name.to_string()),
         TextFont {
-            font_size: ENEMY_LABEL_FONT_SIZE,
+            font_size: FontSize::Px(ENEMY_LABEL_FONT_SIZE),
             ..default()
         },
         TextColor(DEFAULT_COLOR),

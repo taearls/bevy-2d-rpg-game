@@ -121,7 +121,7 @@ pub fn spawn_main_menu(mut commands: Commands, mut selection: ResMut<MainMenuSel
             root.spawn((
                 Text::new("Bevy 2D RPG"),
                 TextFont {
-                    font_size: TITLE_FONT_SIZE,
+                    font_size: FontSize::Px(TITLE_FONT_SIZE),
                     ..default()
                 },
                 TextColor(DEFAULT_COLOR),
@@ -142,7 +142,7 @@ pub fn spawn_main_menu(mut commands: Commands, mut selection: ResMut<MainMenuSel
                         MainMenuCursor(index),
                         Text::new(CURSOR_TEXT),
                         TextFont {
-                            font_size: OPTION_FONT_SIZE,
+                            font_size: FontSize::Px(OPTION_FONT_SIZE),
                             ..default()
                         },
                         TextColor(HIGHLIGHT_COLOR),
@@ -154,7 +154,7 @@ pub fn spawn_main_menu(mut commands: Commands, mut selection: ResMut<MainMenuSel
                         MainMenuLabel(index),
                         Text::new(option.label()),
                         TextFont {
-                            font_size: OPTION_FONT_SIZE,
+                            font_size: FontSize::Px(OPTION_FONT_SIZE),
                             ..default()
                         },
                         TextColor(DEFAULT_COLOR),
