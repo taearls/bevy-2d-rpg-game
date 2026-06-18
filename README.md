@@ -30,6 +30,63 @@ just run-debug      # launch with the egui debug inspector (right-click a sprite
 just run-fast       # launch with Bevy dynamic linking (fastest iterative builds)
 ```
 
+## Play in the browser
+
+The latest `main` is built to WebAssembly and deployed to **Cloudflare Pages**
+on every push. The site is **gated by Cloudflare Access (Zero Trust)** with
+email login restricted to an allow-list, so only approved addresses can reach
+it. Access is enforced at Cloudflare's edge in front of the site — visitors are
+sent to Cloudflare's login page, receive a one-time code by email, and are only
+let through if their address is on the policy. No game files are served to
+unauthenticated visitors.
+
+Default URL once deployed: **`https://bevy-2d-rpg-game.pages.dev`**.
+
+> **One-time setup:**
+>
+> 1. **Pages project** — create a Cloudflare Pages project (Direct Upload /
+>    Wrangler) named `bevy-2d-rpg-game` (matching [`wrangler.toml`](wrangler.toml)).
+> 2. **GitHub secrets** (**Settings → Secrets and variables → Actions**):
+>    `CLOUDFLARE_API_TOKEN` (a token with the *Cloudflare Pages: Edit*
+>    permission) and `CLOUDFLARE_ACCOUNT_ID`. The
+>    [`deploy-cloudflare`](.github/workflows/deploy-cloudflare.yml) workflow
+>    then builds and redeploys on each push to `main`.
+> 3. **Cloudflare Access policy** — in the Cloudflare **Zero Trust** dashboard:
+>    - Under **Settings → Authentication → Login methods**, ensure
+>      **One-time PIN** is enabled (emails a code; no identity provider needed).
+>    - Under **Access → Applications**, add a **Self-hosted** application whose
+>      domain is `bevy-2d-rpg-game.pages.dev` (add your custom domain too if you
+>      use one).
+>    - Give it one policy: **Action: Allow**, **Include → Emails →** your
+>      address. Access denies everyone not matched, so this restricts the site
+>      to exactly the listed address(es). Add more emails later to share access,
+>      or remove one to revoke it.
+>
+> This is real per-user authentication: access is tied to an email you control
+> and can be revoked at any time by editing the policy.
+
+To build or serve the web version locally you need the wasm target and
+[`trunk`](https://trunkrs.dev):
+
+```sh
+rustup target add wasm32-unknown-unknown
+cargo install trunk
+
+just run-web        # serve at http://127.0.0.1:8080 with hot reload
+just build-web      # produce an optimized bundle in ./dist
+```
+
+The browser build uses Bevy's WebGL2 backend and routes RNG entropy through the
+browser's `crypto.getRandomValues` (see the `wasm32` config in `Cargo.toml` and
+`.cargo/config.toml`). The optional `battle.seed` pinning is desktop-only — the
+web build has no local filesystem, so it always rolls fresh entropy.
+
+The bundle is built with a dedicated size-optimized `wasm-release` cargo profile
+(`opt-level = "s"`, fat LTO, one codegen unit, `panic = "abort"`) plus
+`wasm-opt -Oz` (Trunk's wasm-bindgen step strips the debug and name sections),
+so only the native desktop `release` profile keeps `opt-level = 3` for runtime
+speed.
+
 ### Faster compiles
 
 This repo applies Bevy's [recommended build optimizations](https://bevy.org/learn/quick-start/getting-started/setup/):

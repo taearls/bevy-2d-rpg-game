@@ -20,6 +20,15 @@ build:
 build-release:
     cargo build --release
 
+# Serve the WebAssembly build locally with hot reload (http://127.0.0.1:8080).
+# Requires `trunk` and the wasm target: `cargo install trunk && rustup target add wasm32-unknown-unknown`.
+run-web:
+    trunk serve --open
+
+# Build the size-optimized WebAssembly bundle into ./dist (same output the Cloudflare deploy ships).
+build-web:
+    trunk build --release --cargo-profile wasm-release
+
 # Run all tests. Pass `just test verbose` for per-test output.
 test verbosity="quiet":
     #!/usr/bin/env bash

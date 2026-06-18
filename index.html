@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bevy 2D RPG</title>
+
+    <!-- Trunk builds the crate's binary to wasm and injects the loader here. -->
+    <link data-trunk rel="rust" data-wasm-opt="z" />
+    <!-- Ship the runtime assets (sprites, character RON) alongside the wasm. -->
+    <link data-trunk rel="copy-dir" href="assets" />
+    <link data-trunk rel="icon" href="assets/icons/icon.svg" />
+
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #000;
+        overflow: hidden;
+      }
+      /* Bevy/winit appends its <canvas> to the body; center and fit it. */
+      canvas {
+        display: block;
+        margin: 0 auto;
+        outline: none;
+      }
+      #loading {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #cfcfcf;
+        font-family: system-ui, sans-serif;
+        font-size: 1.1rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="loading">Loading Bevy 2D RPG…</div>
+    <script>
+      // Hide the loading text once the game canvas has been inserted.
+      const observer = new MutationObserver(() => {
+        if (document.querySelector("canvas")) {
+          const el = document.getElementById("loading");
+          if (el) el.remove();
+          observer.disconnect();
+        }
+      });
+      observer.observe(document.body, { childList: true });
+    </script>
+  </body>
+</html>

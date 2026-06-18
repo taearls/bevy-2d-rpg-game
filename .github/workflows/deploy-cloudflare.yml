@@ -1,0 +1,48 @@
+name: Deploy Web Build
+
+# Builds the WebAssembly version and deploys it to Cloudflare Pages on every
+# push to `main`. Access control is handled by Cloudflare Access (email login
+# restricted to allowed addresses), configured once in the Zero Trust dashboard
+# — see the README "Play in the browser" section. This workflow only ships the
+# static bundle; Access wraps it at the edge.
+#
+# Required GitHub repository secrets (Settings → Secrets and variables → Actions):
+#   * CLOUDFLARE_API_TOKEN  — token with the "Cloudflare Pages: Edit" permission
+#   * CLOUDFLARE_ACCOUNT_ID — your Cloudflare account ID
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  deploy:
+    name: Build and deploy to Cloudflare Pages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache cargo registry and build
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install Trunk
+        uses: taiki-e/install-action@v2
+        with:
+          tool: trunk
+
+      - name: Build release wasm bundle
+        run: trunk build --release --cargo-profile wasm-release
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy --branch=main

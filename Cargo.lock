@@ -373,6 +373,7 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "bevy-inspector-egui",
+ "getrandom 0.3.4",
  "rand",
  "rand_chacha",
  "ron",

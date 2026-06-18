@@ -150,6 +150,16 @@ rustflags = [
   # "-Zthreads=0",
 ]
 
+# WebAssembly target (browser builds via `trunk`).
+#
+# `getrandom` 0.3 will not build for `wasm32-unknown-unknown` unless a backend
+# is explicitly chosen. The `wasm_js` cfg (paired with the `wasm_js` feature on
+# the `getrandom` dependency in Cargo.toml) routes randomness through the
+# browser's `crypto.getRandomValues`. Without this flag a wasm build fails to
+# compile.
+[target.wasm32-unknown-unknown]
+rustflags = ['--cfg', 'getrandom_backend="wasm_js"']
+
 # Optional: Uncommenting the following improves compile times, but reduces the amount of debug info to 'line number tables only'.
 # In most cases the gains are negligible, but if you are on macOS and have slow compile times you should see significant gains.
 # [profile.dev]

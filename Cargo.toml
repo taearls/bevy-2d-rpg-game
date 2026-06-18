@@ -18,6 +18,17 @@ ron = "0.12"
 thiserror = "2"
 bevy-inspector-egui = { version = "0.36", optional = true }
 
+# WebAssembly-only dependencies. On `wasm32-unknown-unknown`:
+# * Bevy needs the `webgl2` renderer backend for broad browser support (WebGPU
+#   is not yet enabled everywhere).
+# * `getrandom` (pulled in transitively by `rand`) refuses to build for wasm
+#   unless a backend is selected. The `wasm_js` feature wires it to the
+#   browser's `crypto.getRandomValues`; it must be paired with the
+#   `getrandom_backend="wasm_js"` cfg set in `.cargo/config.toml`.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+bevy = { version = "0.18.1", features = ["webgl2"] }
+getrandom = { version = "0.3", features = ["wasm_js"] }
+
 [features]
 # `bevy/track_location` records the source location of the last change to each
 # component, which the inspector surfaces as a right-click "jump to code" on a
@@ -39,6 +50,28 @@ debug = 1
 # Enable a large amount of optimization in the dev profile for dependencies.
 [profile.dev.package."*"]
 opt-level = 3
+
+# Size-optimized profile for the WebAssembly bundle, kept separate from the
+# native `release` profile (which stays at opt-level 3 for runtime speed). The
+# Trunk build / Pages deploy select it with `--cargo-profile wasm-release`.
+# These flags shrink the `.wasm` the browser has to download:
+[profile.wasm-release]
+inherits = "release"
+# Optimize for size rather than raw speed — fine for a turn-based RPG.
+opt-level = "s"
+# Whole-program link-time optimization strips cross-crate dead code.
+lto = "fat"
+# A single codegen unit lets the optimizer see the whole crate (smaller output,
+# slower compile — acceptable for a deploy build).
+codegen-units = 1
+# Drop panic-unwinding tables; wasm aborts on panic anyway.
+panic = "abort"
+# NOTE: deliberately *not* setting `strip = true`. Stripping removes the wasm
+# `target_features` custom section, which `wasm-opt` reads to learn which wasm
+# features (bulk-memory, non-trapping float-to-int, …) the binary uses. Without
+# it `wasm-opt` falls back to the MVP feature set and rejects the bundle. The
+# Trunk release pipeline (wasm-bindgen + `wasm-opt -Oz`) already strips debug
+# and name sections, so cargo-level stripping adds little for wasm anyway.
 
 [lints.clippy]
 # Opt into clippy::pedantic for maintainability/style enforcement. priority = -1
