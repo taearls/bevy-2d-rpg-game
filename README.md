@@ -33,34 +33,34 @@ just run-fast       # launch with Bevy dynamic linking (fastest iterative builds
 ## Play in the browser
 
 The latest `main` is built to WebAssembly and deployed to **Cloudflare Pages**
-on every push. The site is **gated by Cloudflare Access (Zero Trust)** with
+on every push. The live site is **gated by Cloudflare Access (Zero Trust)** with
 email login restricted to an allow-list, so only approved addresses can reach
 it. Access is enforced at Cloudflare's edge in front of the site — visitors are
 sent to Cloudflare's login page, receive a one-time code by email, and are only
 let through if their address is on the policy. No game files are served to
 unauthenticated visitors.
 
-Default URL once deployed: **`https://bevy-2d-rpg-game.pages.dev`**.
+Live at **`https://bevy-2d-rpg-game.pages.dev`** — unauthenticated visitors are
+redirected to Cloudflare's login instead of the game.
 
-> **One-time setup:**
+> **Deployment configuration** (already set up — kept here for reference and
+> for managing the allow-list):
 >
-> 1. **Pages project** — create a Cloudflare Pages project (Direct Upload /
->    Wrangler) named `bevy-2d-rpg-game` (matching [`wrangler.toml`](wrangler.toml)).
+> 1. **Pages project** — a Cloudflare Pages project (Direct Upload / Wrangler)
+>    named `bevy-2d-rpg-game` (matching [`wrangler.toml`](wrangler.toml)).
 > 2. **GitHub secrets** (**Settings → Secrets and variables → Actions**):
 >    `CLOUDFLARE_API_TOKEN` (a token with the *Cloudflare Pages: Edit*
 >    permission) and `CLOUDFLARE_ACCOUNT_ID`. The
 >    [`deploy-cloudflare`](.github/workflows/deploy-cloudflare.yml) workflow
->    then builds and redeploys on each push to `main`.
+>    builds and redeploys on each push to `main`.
 > 3. **Cloudflare Access policy** — in the Cloudflare **Zero Trust** dashboard:
->    - Under **Settings → Authentication → Login methods**, ensure
->      **One-time PIN** is enabled (emails a code; no identity provider needed).
->    - Under **Access → Applications**, add a **Self-hosted** application whose
->      domain is `bevy-2d-rpg-game.pages.dev` (add your custom domain too if you
->      use one).
->    - Give it one policy: **Action: Allow**, **Include → Emails →** your
->      address. Access denies everyone not matched, so this restricts the site
->      to exactly the listed address(es). Add more emails later to share access,
->      or remove one to revoke it.
+>    - **Settings → Authentication → Login methods** has **One-time PIN**
+>      enabled (emails a code; no identity provider needed).
+>    - **Access → Applications** has a **Self-hosted** application whose domain
+>      is `bevy-2d-rpg-game.pages.dev`.
+>    - Its policy is **Action: Allow**, **Include → Emails →** the allow-listed
+>      address(es). Access denies everyone not matched. **To share access add an
+>      email to that policy; to revoke, remove one.**
 >
 > This is real per-user authentication: access is tied to an email you control
 > and can be revoked at any time by editing the policy.
