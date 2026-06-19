@@ -9,8 +9,57 @@ license = "MIT"
 name = "bevy_2d_rpg_game"
 path = "src/lib.rs"
 
+# Bevy with default features OFF, composed from the granular building blocks a
+# 2D game actually uses. This skips the `default`/`2d`/`ui` bundle features,
+# which hard-pull the entire 3D/PBR/glTF stack plus `bevy_audio`, `bevy_scene`,
+# `bevy_gilrs`, and `sysinfo_plugin` — none of which this game uses. Dropping
+# them shrinks the wasm bundle and cuts compile time.
+#
+# Render stack mirrors what the `2d` bundle expands to (sprite + UI render,
+# core pipeline, post-process) minus the unused bits. `bevy_picking` is kept:
+# the targeting indicator and the debug inspector both rely on sprite picking.
+# `multi_threaded` / `x11` / `wayland` are native-only and overridden out for
+# wasm below.
+[dependencies.bevy]
+version = "0.18.1"
+default-features = false
+features = [
+    # App scaffolding (mirrors `default_app`).
+    "bevy_asset",
+    "bevy_input_focus",
+    "bevy_log",
+    "bevy_state",
+    "bevy_window",
+    "bevy_winit",
+    "custom_cursor",
+    "reflect_auto_register",
+    "async_executor",
+    # 2D render pipeline.
+    "bevy_core_pipeline",
+    "bevy_render",
+    "bevy_sprite",
+    "bevy_sprite_render",
+    "bevy_post_process",
+    # UI + text.
+    "bevy_ui",
+    "bevy_ui_render",
+    "bevy_text",
+    "default_font",
+    # Color, image decoding (PNG sprites), and sprite picking.
+    "bevy_color",
+    "bevy_image",
+    "png",
+    # Core picking plus the sprite backend: the targeting indicator and the
+    # debug inspector both pick sprites (SpritePickingMode/Settings).
+    "bevy_picking",
+    "sprite_picking",
+    # Native platform features (overridden out on wasm).
+    "multi_threaded",
+    "x11",
+    "wayland",
+]
+
 [dependencies]
-bevy = "0.18.1"
 rand = "0.9"
 rand_chacha = "0.9"
 serde = { version = "1", features = ["derive"] }
@@ -18,15 +67,16 @@ ron = "0.12"
 thiserror = "2"
 bevy-inspector-egui = { version = "0.36", optional = true }
 
-# WebAssembly-only dependencies. On `wasm32-unknown-unknown`:
-# * Bevy needs the `webgl2` renderer backend for broad browser support (WebGPU
-#   is not yet enabled everywhere).
+# WebAssembly-only Bevy features. On `wasm32-unknown-unknown`:
+# * The `webgl2` renderer backend gives broad browser support (WebGPU is not
+#   yet enabled everywhere). `multi_threaded`/`x11`/`wayland` are meaningless on
+#   wasm, so the web build only adds `webgl2` on top of the shared set above.
 # * `getrandom` (pulled in transitively by `rand`) refuses to build for wasm
 #   unless a backend is selected. The `wasm_js` feature wires it to the
 #   browser's `crypto.getRandomValues`; it must be paired with the
 #   `getrandom_backend="wasm_js"` cfg set in `.cargo/config.toml`.
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-bevy = { version = "0.18.1", features = ["webgl2"] }
+bevy = { version = "0.18.1", default-features = false, features = ["webgl2"] }
 getrandom = { version = "0.3", features = ["wasm_js"] }
 
 [features]
