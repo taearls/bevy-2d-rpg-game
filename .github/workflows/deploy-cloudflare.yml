@@ -42,7 +42,16 @@ jobs:
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
+        env:
+          # Wrangler reads the credentials from the environment in a
+          # non-interactive run; the action inputs below alone do not reach the
+          # wrangler subprocess, so the deploy fails with "necessary to set a
+          # CLOUDFLARE_API_TOKEN environment variable". Set both here.
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy --branch=main
+          # Project name and output dir come from wrangler.toml
+          # (name = "bevy-2d-rpg-game", pages_build_output_dir = "dist").
+          command: pages deploy
