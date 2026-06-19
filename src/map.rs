@@ -185,7 +185,7 @@ pub fn setup_map(
     commands.spawn((
         Text::new("Explore with arrow keys / WASD - a battle may find you."),
         TextFont {
-            font_size: 20.0,
+            font_size: FontSize::Px(20.0),
             ..default()
         },
         TextColor(Color::WHITE),
@@ -203,7 +203,7 @@ pub fn setup_map(
         MapHpText,
         Text::new(""),
         TextFont {
-            font_size: 24.0,
+            font_size: FontSize::Px(24.0),
             ..default()
         },
         TextColor(Color::WHITE),

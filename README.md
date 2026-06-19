@@ -1,7 +1,7 @@
 # bevy-2d-rpg-game
 
 A turn-based RPG battle vertical slice built in [Bevy](https://bevyengine.org)
-0.18 — a port of an existing Godot 4.6 / C# game. See
+0.19 — a port of an existing Godot 4.6 / C# game. See
 [PORT_PLAN.md](PORT_PLAN.md) for the full design and the phased
 [ROADMAP.md](ROADMAP.md) for status.
 
@@ -26,7 +26,7 @@ or "Return to Title Screen".
 
 ```sh
 just run            # launch the game window
-just run-debug      # launch with the egui debug inspector (right-click a sprite to inspect)
+just run-debug      # egui debug inspector — temporarily disabled (see note below)
 just run-fast       # launch with Bevy dynamic linking (fastest iterative builds)
 ```
 
@@ -105,6 +105,14 @@ This repo applies Bevy's [recommended build optimizations](https://bevy.org/lear
   uncomment the mold line) and the nightly-only `share-generics` /
   parallel-frontend / `no-embed-metadata` flags a one-line change. The only live
   directive is `rust-lld` for the `x86_64-pc-windows-msvc` target.
+
+> **Temporarily disabled during the Bevy 0.19 migration.** `bevy-inspector-egui`
+> has no Bevy 0.19-compatible release yet (it targets 0.18 on both crates.io and
+> git `main`), so the `debug-inspector` feature and its dependency are commented
+> out in `Cargo.toml` and `just run-debug` is a no-op. The inspector code and its
+> `#[cfg(feature = "debug-inspector")]` gates are left in place so the feature can
+> be restored in one step once a compatible release ships. The rest of this
+> section describes the inspector as it will work again when re-enabled.
 
 `just run-debug` builds with the `debug-inspector` feature. **Right-click any
 sprite** (or Control+left-click on a trackpad) to open a focused

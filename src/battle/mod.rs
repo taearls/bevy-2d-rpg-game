@@ -114,11 +114,12 @@ impl Plugin for BattlePlugin {
                     report_roster_load_failures,
                     spawn_battle.run_if(
                         in_state(GameState::InBattle)
-                            .and(roster_ready)
-                            .and(battle_unspawned),
+                            .and_then(roster_ready)
+                            .and_then(battle_unspawned),
                     ),
-                    battle_over_input
-                        .run_if(in_state(GameState::InBattle).and(in_state(TurnPhase::BattleOver))),
+                    battle_over_input.run_if(
+                        in_state(GameState::InBattle).and_then(in_state(TurnPhase::BattleOver)),
+                    ),
                     menu_input
                         .in_set(BattleSet::Input)
                         .run_if(in_state(TurnPhase::PlayerTurn)),
