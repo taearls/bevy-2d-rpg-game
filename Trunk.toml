@@ -1,0 +1,25 @@
+# Trunk configuration for the WebAssembly (browser) build.
+# Docs: https://trunkrs.dev
+#
+# Build:  trunk build --release        (outputs to ./dist)
+# Serve:  trunk serve                  (local dev server at 127.0.0.1:8080)
+#
+# The GitHub Pages workflow passes `--public-url /bevy-2d-rpg-game/` so asset
+# URLs resolve under the project page path. Local `trunk serve` uses the
+# default root path, so no override is needed here.
+
+[build]
+target = "index.html"
+dist = "dist"
+
+# Watch only the inputs that actually affect the build. Trunk's default watches
+# the whole project root, so stray writes (Playwright artifacts under
+# `.playwright-mcp/`, a `battle.seed` from `just shuffle`, editor temp files)
+# trigger a rebuild + autoreload — the page appears to refresh on its own.
+[watch]
+watch = ["src", "assets", "index.html", "Cargo.toml"]
+ignore = ["dist", "target", ".playwright-mcp"]
+
+[serve]
+addresses = ["127.0.0.1"]
+port = 8080

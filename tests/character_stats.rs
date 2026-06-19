@@ -43,16 +43,18 @@ fn damage_variance_defaults_match_godot_exports() {
 }
 
 #[test]
-fn combat_stats_def_defaults_mirror_godot_combat_stats() {
+fn combat_stats_def_defaults_are_the_tuned_values() {
+    // `attack`/`defense` mirror the Godot `CombatStats.cs` exports; `max_health`
+    // is tuned down from Godot's 100 to 50 (see `definition.rs` module docs).
     let stats = CombatStatsDef::default();
-    assert_eq!(stats.max_health, 100);
+    assert_eq!(stats.max_health, 50);
     assert_eq!(stats.attack, 10);
     assert_eq!(stats.defense, 5);
 }
 
 #[test]
 fn character_def_uses_stat_defaults_when_omitted() {
-    // Name and sprite are supplied; stats fall back to 100/10/5.
+    // Name and sprite are supplied; stats fall back to 50/10/5.
     let def: CharacterDef =
         ron::from_str(r#"(display_name: "Goblin", sprite: "sprites/enemy.png")"#).unwrap();
     assert_eq!(def.display_name, "Goblin");
@@ -64,7 +66,7 @@ fn character_def_uses_stat_defaults_when_omitted() {
 fn combat_stats_def_fills_missing_fields_individually() {
     // attack is overridden; max_health and defense keep their defaults.
     let stats: CombatStatsDef = ron::from_str("(attack: 25)").unwrap();
-    assert_eq!(stats.max_health, 100);
+    assert_eq!(stats.max_health, 50);
     assert_eq!(stats.attack, 25);
     assert_eq!(stats.defense, 5);
 }
