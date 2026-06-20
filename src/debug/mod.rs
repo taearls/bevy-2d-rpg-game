@@ -56,6 +56,10 @@ struct InspectArmed;
 /// than panicking. That is the correct behaviour anyway: with no window there is
 /// nothing to click and nowhere to draw, so `cargo test --all-features` stays
 /// green.
+///
+/// `pub` (unlike the `pub(crate)` sibling feature plugins) so the headless
+/// no-op integration test in `tests/smoke.rs` can reference it across the crate
+/// boundary.
 pub fn plugin(app: &mut App) {
     if app.get_sub_app(RenderApp).is_none() {
         return;
