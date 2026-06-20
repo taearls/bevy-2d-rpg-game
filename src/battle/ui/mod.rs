@@ -87,28 +87,24 @@ pub fn log_showing(phase: TurnPhase) -> bool {
 /// ([`OnEnter(InBattle)`](GameState::InBattle)) and runs the per-frame refreshers
 /// in [`BattleSet::Ui`], so the HUD always reflects the world state the
 /// resolve/cleanup phases just produced.
-pub struct BattleUiPlugin;
-
-impl Plugin for BattleUiPlugin {
-    fn build(&self, app: &mut App) {
-        app.register_type::<UiConfig>()
-            .init_resource::<UiConfig>()
-            // Spawn the HUD/log tree when a battle starts, not at startup, so it
-            // never sits behind the main menu before "New Game" is chosen.
-            .add_systems(OnEnter(GameState::InBattle), (spawn_hud, spawn_battle_log))
-            .add_systems(OnEnter(TurnPhase::PlayerTurn), clear_log_on_player_turn)
-            .add_systems(
-                Update,
-                (
-                    refresh_player_hud,
-                    refresh_enemy_labels,
-                    sync_enemy_label_text,
-                    update_enemy_label_highlight,
-                    sync_enemy_health_bars,
-                    render_log_panel,
-                    swap_panel_for_phase,
-                )
-                    .in_set(BattleSet::Ui),
-            );
-    }
+pub(crate) fn plugin(app: &mut App) {
+    app.register_type::<UiConfig>()
+        .init_resource::<UiConfig>()
+        // Spawn the HUD/log tree when a battle starts, not at startup, so it
+        // never sits behind the main menu before "New Game" is chosen.
+        .add_systems(OnEnter(GameState::InBattle), (spawn_hud, spawn_battle_log))
+        .add_systems(OnEnter(TurnPhase::PlayerTurn), clear_log_on_player_turn)
+        .add_systems(
+            Update,
+            (
+                refresh_player_hud,
+                refresh_enemy_labels,
+                sync_enemy_label_text,
+                update_enemy_label_highlight,
+                sync_enemy_health_bars,
+                render_log_panel,
+                swap_panel_for_phase,
+            )
+                .in_set(BattleSet::Ui),
+        );
 }

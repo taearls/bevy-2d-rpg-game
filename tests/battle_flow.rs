@@ -15,7 +15,7 @@
 //! time is driven by [`TimeUpdateStrategy::ManualDuration`] so the enemy-turn
 //! gaps are exact. The systems under test are the production ones — `menu_input`,
 //! `targeting_input`, `tick_enemy_turn`, `apply_attacks`, `check_battle_end` —
-//! assembled with the same `BattleSet` chain and state wiring as `BattlePlugin`.
+//! assembled with the same `BattleSet` chain and state wiring as `battle::plugin`.
 
 use std::time::Duration;
 

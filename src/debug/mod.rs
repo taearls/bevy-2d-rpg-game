@@ -56,28 +56,24 @@ struct InspectArmed;
 /// than panicking. That is the correct behaviour anyway: with no window there is
 /// nothing to click and nowhere to draw, so `cargo test --all-features` stays
 /// green.
-pub struct DebugPlugin;
-
-impl Plugin for DebugPlugin {
-    fn build(&self, app: &mut App) {
-        if app.get_sub_app(RenderApp).is_none() {
-            return;
-        }
-
-        app.init_resource::<InspectedEntity>()
-            .add_plugins(EguiPlugin::default())
-            // Registers the `InspectorEguiImpl`s for primitive types (String,
-            // usize, f32, …). Without it, component fields render as opaque
-            // "register an InspectorEguiImpl" notices instead of editable widgets.
-            // The removed `WorldInspectorPlugin` used to pull this in for us.
-            .add_plugins(bevy_inspector_egui::DefaultInspectorConfigPlugin)
-            .add_observer(on_right_click_inspect)
-            .add_systems(Update, (arm_sprite_picking, clear_on_escape))
-            .add_systems(
-                EguiPrimaryContextPass,
-                (enemy_list_ui, inspected_entity_ui).chain(),
-            );
+pub fn plugin(app: &mut App) {
+    if app.get_sub_app(RenderApp).is_none() {
+        return;
     }
+
+    app.init_resource::<InspectedEntity>()
+        .add_plugins(EguiPlugin::default())
+        // Registers the `InspectorEguiImpl`s for primitive types (String,
+        // usize, f32, …). Without it, component fields render as opaque
+        // "register an InspectorEguiImpl" notices instead of editable widgets.
+        // The removed `WorldInspectorPlugin` used to pull this in for us.
+        .add_plugins(bevy_inspector_egui::DefaultInspectorConfigPlugin)
+        .add_observer(on_right_click_inspect)
+        .add_systems(Update, (arm_sprite_picking, clear_on_escape))
+        .add_systems(
+            EguiPrimaryContextPass,
+            (enemy_list_ui, inspected_entity_ui).chain(),
+        );
 }
 
 /// Make every world sprite pickable so a right-click can hit it. Inserts
