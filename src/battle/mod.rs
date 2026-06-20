@@ -21,7 +21,8 @@ use crate::combat::resolve::{apply_attacks, check_battle_end, on_died_hide_sprit
 use crate::components::{CombatStats, DamageVariance, Health, Player};
 use enemy_turn::{EnemyTurnQueue, on_enter_enemy_turn, tick_enemy_turn};
 use menu::{
-    MenuSelection, menu_input, on_enter_player_turn, spawn_action_menu, update_menu_highlight,
+    LogView, MenuSelection, close_log_view_on_player_turn, log_overlay_input, menu_input,
+    on_enter_player_turn, spawn_action_menu, update_menu_highlight,
 };
 use messages::{LogMessage, render_log_messages};
 use spawn::{BattleLayout, Roster, load_roster, spawn_battle, spawn_selection_indicator};
@@ -55,6 +56,7 @@ pub(crate) fn plugin(app: &mut App) {
         .register_type::<DamageVariance>()
         .init_resource::<BattleLayout>()
         .init_resource::<MenuSelection>()
+        .init_resource::<LogView>()
         .init_resource::<SelectedTarget>()
         .init_resource::<EnemyTurnQueue>()
         .init_resource::<BattleResult>()
@@ -99,7 +101,10 @@ pub(crate) fn plugin(app: &mut App) {
             ),
         )
         .add_systems(OnEnter(TurnPhase::BattleOver), log_continue_hint)
-        .add_systems(OnEnter(TurnPhase::PlayerTurn), on_enter_player_turn)
+        .add_systems(
+            OnEnter(TurnPhase::PlayerTurn),
+            (on_enter_player_turn, close_log_view_on_player_turn),
+        )
         .add_systems(OnEnter(TurnPhase::Targeting), on_enter_targeting)
         .add_systems(OnExit(TurnPhase::Targeting), on_exit_targeting)
         .add_systems(OnEnter(TurnPhase::EnemyTurn), on_enter_enemy_turn)
@@ -115,6 +120,13 @@ pub(crate) fn plugin(app: &mut App) {
                 battle_over_input.run_if(
                     in_state(GameState::InBattle).and_then(in_state(TurnPhase::BattleOver)),
                 ),
+                // The log-overlay close key runs before `menu_input` (which
+                // early-returns while the overlay is open) so Escape / Enter
+                // closes the log without also confirming a menu row.
+                log_overlay_input
+                    .in_set(BattleSet::Input)
+                    .before(menu_input)
+                    .run_if(in_state(TurnPhase::PlayerTurn)),
                 menu_input
                     .in_set(BattleSet::Input)
                     .run_if(in_state(TurnPhase::PlayerTurn)),

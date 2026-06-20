@@ -17,7 +17,7 @@ use bevy::time::TimeUpdateStrategy;
 
 use bevy_2d_rpg_game::battle::battle_over_input;
 use bevy_2d_rpg_game::battle::enemy_turn::{EnemyTurnQueue, on_enter_enemy_turn, tick_enemy_turn};
-use bevy_2d_rpg_game::battle::menu::{MenuSelection, menu_input, on_enter_player_turn};
+use bevy_2d_rpg_game::battle::menu::{LogView, MenuSelection, menu_input, on_enter_player_turn};
 use bevy_2d_rpg_game::battle::messages::LogMessage;
 use bevy_2d_rpg_game::battle::rng::DamageRng;
 use bevy_2d_rpg_game::battle::state::{BattleResult, BattleSet, TurnPhase};
@@ -43,6 +43,7 @@ fn outcome_app(player_hp: i32, player_attack: i32, enemy_hp: i32, enemy_attack: 
     app.add_plugins((MinimalPlugins, StatesPlugin))
         .init_resource::<ButtonInput<KeyCode>>()
         .init_resource::<MenuSelection>()
+        .init_resource::<LogView>()
         .init_resource::<SelectedTarget>()
         .init_resource::<EnemyTurnQueue>()
         .init_resource::<BattleResult>()

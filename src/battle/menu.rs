@@ -34,24 +34,30 @@ const PANEL_BORDER_COLOR: Color = Color::WHITE;
 /// layered look (rather than floating in the gap above it).
 const PANEL_BOTTOM_OFFSET: f32 = 0.0;
 
-/// The four menu actions, in display order. Index parity with the row layout and
-/// with the Godot `SetActions(Fight, Items, Defend, Flee)` ordering.
+/// The five menu actions, in display order. Index parity with the row layout and
+/// with the Godot `SetActions(Fight, Items, Defend, Flee)` ordering, plus the
+/// Bevy-only [`Log`](MenuAction::Log) review option.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MenuAction {
     Fight,
     Items,
     Defend,
     Flee,
+    /// Open the battle log to review the previous turn's lines. Unlike the other
+    /// actions this does not end the player's turn; it opens an overlay the player
+    /// dismisses (Escape / Enter) back to this menu. See [`LogView`].
+    Log,
 }
 
 impl MenuAction {
     /// Every action in menu order — the single source of truth for both the row
     /// layout and the count used by [`cycle_index`].
-    pub const ALL: [MenuAction; 4] = [
+    pub const ALL: [MenuAction; 5] = [
         MenuAction::Fight,
         MenuAction::Items,
         MenuAction::Defend,
         MenuAction::Flee,
+        MenuAction::Log,
     ];
 
     /// The label shown on this action's row.
@@ -62,6 +68,7 @@ impl MenuAction {
             MenuAction::Items => "Items",
             MenuAction::Defend => "Defend",
             MenuAction::Flee => "Flee",
+            MenuAction::Log => "Log",
         }
     }
 }
@@ -71,6 +78,15 @@ impl MenuAction {
 #[derive(Resource, Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct MenuSelection {
     pub highlighted: Option<usize>,
+}
+
+/// Whether the player has opened the battle log overlay from the menu during
+/// their turn (the [`Log`](MenuAction::Log) action). While `true` the log panel
+/// is shown in place of the action menu; Escape / Enter closes it. Reset to
+/// `false` on every `OnEnter(PlayerTurn)` so a new turn always starts on the menu.
+#[derive(Resource, Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct LogView {
+    pub open: bool,
 }
 
 /// Root container of the action menu (the Godot `ActionMenu` `VBoxContainer`).
@@ -142,9 +158,17 @@ pub fn menu_input(
     mut selection: ResMut<MenuSelection>,
     mut next_state: ResMut<NextState<TurnPhase>>,
     mut log: MessageWriter<LogMessage>,
+    mut log_view: ResMut<LogView>,
     mut commands: Commands,
     player: Query<(Entity, &DisplayName), With<Player>>,
 ) {
+    // While the log overlay is open the menu is hidden and does not navigate;
+    // closing it is handled by `log_overlay_input`, which runs first and consumes
+    // the key. Bail so a stray Enter here can't also confirm a menu action.
+    if log_view.open {
+        return;
+    }
+
     let count = MenuAction::ALL.len();
 
     // Resolve the navigation key once, then dispatch. `iter().find` mirrors the
@@ -174,6 +198,7 @@ pub fn menu_input(
                     MenuAction::ALL[index],
                     &mut next_state,
                     &mut log,
+                    &mut log_view,
                     &mut commands,
                     &player,
                 );
@@ -183,6 +208,33 @@ pub fn menu_input(
     }
 }
 
+/// `BattleSet::Input`, gated to [`PlayerTurn`](TurnPhase::PlayerTurn): while the
+/// log overlay is open, Escape or Enter closes it back to the action menu.
+///
+/// Ordered before [`menu_input`]. Since closing flips `LogView::open` to `false`
+/// mid-frame, `menu_input`'s open-check alone wouldn't stop it re-reading the same
+/// Enter and confirming a menu row; so this also **consumes** the closing key
+/// (`clear_just_pressed`) so no later system sees that edge. The turn does not
+/// change — the log is a non-committal review overlay.
+pub fn log_overlay_input(mut keys: ResMut<ButtonInput<KeyCode>>, mut log_view: ResMut<LogView>) {
+    if !log_view.open {
+        return;
+    }
+    if keys.just_pressed(KeyCode::Escape) {
+        log_view.open = false;
+        keys.clear_just_pressed(KeyCode::Escape);
+    } else if keys.just_pressed(KeyCode::Enter) {
+        log_view.open = false;
+        keys.clear_just_pressed(KeyCode::Enter);
+    }
+}
+
+/// `OnEnter(PlayerTurn)`: close any log overlay left open, so a new player turn
+/// always opens on the action menu rather than the previous turn's log view.
+pub fn close_log_view_on_player_turn(mut log_view: ResMut<LogView>) {
+    log_view.open = false;
+}
+
 /// Run the chosen action, dispatching to the right turn transition and log line.
 /// Split out so headless tests can invoke it directly, mirroring
 /// `ActionMenuTest.ConfirmSelection_InvokesCorrectHandler`.
@@ -190,6 +242,7 @@ fn confirm_action(
     action: MenuAction,
     next_state: &mut NextState<TurnPhase>,
     log: &mut MessageWriter<LogMessage>,
+    log_view: &mut LogView,
     commands: &mut Commands,
     player: &Query<(Entity, &DisplayName), With<Player>>,
 ) {
@@ -218,6 +271,11 @@ fn confirm_action(
         MenuAction::Flee => {
             log.write(LogMessage::new(format!("{name} attempts to flee!")));
             next_state.set(TurnPhase::EnemyTurn);
+        }
+        // Open the log overlay in place of the menu; this does not end the turn.
+        // `log_overlay_input` closes it again on Escape / Enter.
+        MenuAction::Log => {
+            log_view.open = true;
         }
     }
 }
@@ -365,10 +423,11 @@ mod tests {
         assert_eq!(cycle_index(Some(0), CycleDirection::Up, 1), 0);
     }
 
-    /// The four actions render the Godot labels in order.
+    /// The five actions render their labels in order — the four Godot actions
+    /// plus the Bevy-only Log review option.
     #[test]
     fn actions_have_expected_labels() {
         let labels: Vec<&str> = MenuAction::ALL.iter().map(|a| a.label()).collect();
-        assert_eq!(labels, ["Fight", "Items", "Defend", "Flee"]);
+        assert_eq!(labels, ["Fight", "Items", "Defend", "Flee", "Log"]);
     }
 }

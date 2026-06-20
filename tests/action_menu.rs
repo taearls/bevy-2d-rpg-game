@@ -25,7 +25,9 @@ use bevy_2d_rpg_game::components::{
     CombatStats, DamageVariance, Defending, DisplayName, Health, Player,
 };
 
-use bevy_2d_rpg_game::battle::menu::{menu_input, on_enter_player_turn, update_menu_highlight};
+use bevy_2d_rpg_game::battle::menu::{
+    LogView, log_overlay_input, menu_input, on_enter_player_turn, update_menu_highlight,
+};
 
 /// Build a headless battle app with the turn state, action menu, and a player
 /// entity named `player_name`. No renderer — the menu UI is a `bsn!` scene of
@@ -49,6 +51,7 @@ fn menu_app(player_name: &str) -> App {
     ))
     .init_resource::<ButtonInput<KeyCode>>()
     .init_resource::<MenuSelection>()
+    .init_resource::<LogView>()
     .init_state::<TurnPhase>()
     .add_message::<LogMessage>()
     .configure_sets(
@@ -66,6 +69,10 @@ fn menu_app(player_name: &str) -> App {
     .add_systems(
         Update,
         (
+            log_overlay_input
+                .in_set(BattleSet::Input)
+                .before(menu_input)
+                .run_if(in_state(TurnPhase::PlayerTurn)),
             menu_input
                 .in_set(BattleSet::Input)
                 .run_if(in_state(TurnPhase::PlayerTurn)),
@@ -119,6 +126,10 @@ fn selection(app: &mut App) -> Option<usize> {
     app.world().resource::<MenuSelection>().highlighted
 }
 
+fn log_view_open(app: &App) -> bool {
+    app.world().resource::<LogView>().open
+}
+
 fn current_phase(app: &mut App) -> TurnPhase {
     *app.world().resource::<State<TurnPhase>>().get()
 }
@@ -161,7 +172,7 @@ fn cycle_index_matches_godot_wrap_semantics() {
 // --- Menu structure ---
 
 #[test]
-fn menu_has_four_rows_with_expected_labels() {
+fn menu_has_five_rows_with_expected_labels() {
     let mut app = menu_app("Hero");
 
     let panels = app
@@ -176,7 +187,10 @@ fn menu_has_four_rows_with_expected_labels() {
         .query::<&MenuRow>()
         .iter(app.world())
         .count();
-    assert_eq!(rows, 4, "four selectable rows");
+    assert_eq!(
+        rows, 5,
+        "five selectable rows (Fight/Items/Defend/Flee/Log)"
+    );
 
     assert_eq!(
         labels(&mut app),
@@ -185,6 +199,7 @@ fn menu_has_four_rows_with_expected_labels() {
             (1, "Items".to_string()),
             (2, "Defend".to_string()),
             (3, "Flee".to_string()),
+            (4, "Log".to_string()),
         ]
     );
 }
@@ -228,7 +243,12 @@ fn arrow_down_cycles_forward_with_wrap() {
 
     press(&mut app, KeyCode::ArrowDown);
     press(&mut app, KeyCode::ArrowDown);
-    assert_eq!(selection(&mut app), Some(3));
+    press(&mut app, KeyCode::ArrowDown);
+    assert_eq!(
+        selection(&mut app),
+        Some(4),
+        "advanced to the last row (Log)"
+    );
 
     // Wrap past the last row back to the first.
     press(&mut app, KeyCode::ArrowDown);
@@ -241,7 +261,11 @@ fn arrow_up_wraps_backward() {
     assert_eq!(selection(&mut app), Some(0));
 
     press(&mut app, KeyCode::ArrowUp);
-    assert_eq!(selection(&mut app), Some(3), "up from row 0 wraps to last");
+    assert_eq!(
+        selection(&mut app),
+        Some(4),
+        "up from row 0 wraps to last (Log)"
+    );
 }
 
 #[test]
@@ -305,13 +329,60 @@ fn defend_inserts_marker_queues_message_and_ends_turn() {
 #[test]
 fn flee_logs_and_ends_player_turn() {
     let mut app = menu_app("Hero");
-    press(&mut app, KeyCode::ArrowUp); // wrap up to Flee (row 3)
+    // From row 0, wrap up to Log (row 4) then up once more to Flee (row 3).
+    press(&mut app, KeyCode::ArrowUp);
+    press(&mut app, KeyCode::ArrowUp);
     press(&mut app, KeyCode::Enter);
 
     assert_eq!(current_phase(&mut app), TurnPhase::EnemyTurn);
     assert_eq!(
         drain_log(&mut app),
         vec!["Hero attempts to flee!".to_string()]
+    );
+}
+
+// --- Log review overlay ---
+
+/// Selecting `Log` (row 4) opens the log overlay without ending the turn, and
+/// Escape closes it again — the player can review the previous turn's lines and
+/// return to the menu.
+#[test]
+fn log_option_opens_overlay_then_escape_closes_it() {
+    let mut app = menu_app("Hero");
+    // Navigate to Log (row 4): up from row 0 wraps straight to it.
+    press(&mut app, KeyCode::ArrowUp);
+    assert_eq!(selection(&mut app), Some(4));
+
+    // Confirm opens the overlay; the turn does not change.
+    press(&mut app, KeyCode::Enter);
+    assert!(log_view_open(&app), "Log opens the review overlay");
+    assert_eq!(
+        current_phase(&mut app),
+        TurnPhase::PlayerTurn,
+        "opening the log does not end the player turn"
+    );
+
+    // Escape closes it back to the menu, still the player's turn.
+    press(&mut app, KeyCode::Escape);
+    assert!(!log_view_open(&app), "Escape closes the log overlay");
+    assert_eq!(current_phase(&mut app), TurnPhase::PlayerTurn);
+}
+
+/// Enter also closes the overlay, and the closing Enter does not leak through to
+/// confirm a menu action (the overlay-close input runs before `menu_input`).
+#[test]
+fn enter_closes_overlay_without_confirming_a_menu_action() {
+    let mut app = menu_app("Hero");
+    press(&mut app, KeyCode::ArrowUp); // → Log (row 4)
+    press(&mut app, KeyCode::Enter); // open
+    assert!(log_view_open(&app));
+
+    press(&mut app, KeyCode::Enter); // close
+    assert!(!log_view_open(&app), "Enter closes the log overlay");
+    assert_eq!(
+        current_phase(&mut app),
+        TurnPhase::PlayerTurn,
+        "the closing Enter does not re-confirm Log (or any action)"
     );
 }
 

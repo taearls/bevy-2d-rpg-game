@@ -5,8 +5,8 @@
 //! count, a `TextColor`, a `Transform.scale` — never a pixel. The real UI
 //! systems are wired into a renderer-free `App` (`MinimalPlugins` + `StatesPlugin`):
 //! `spawn_hud` / `spawn_battle_log` build the tree, the `BattleSet::Ui`
-//! refreshers run each frame, and `clear_log_on_player_turn` runs on the
-//! `PlayerTurn` enter. As in the other UI suites, `InputPlugin` is omitted so a
+//! refreshers run each frame, and `clear_log_on_player_action` runs on leaving
+//! `PlayerTurn`. As in the other UI suites, `InputPlugin` is omitted so a
 //! manually-set state is not disturbed, and the combat resolver is included so
 //! damage flows through `Changed<Health>` exactly as in play.
 
@@ -15,14 +15,14 @@ use bevy::scene::ScenePlugin;
 use bevy::state::app::StatesPlugin;
 
 use bevy_2d_rpg_game::battle::menu::{
-    ActionMenuPanel, MenuCursor, MenuSelection, spawn_action_menu, update_menu_highlight,
+    ActionMenuPanel, LogView, MenuCursor, MenuSelection, spawn_action_menu, update_menu_highlight,
 };
 use bevy_2d_rpg_game::battle::messages::LogMessage;
 use bevy_2d_rpg_game::battle::state::{BattleSet, TurnPhase};
 use bevy_2d_rpg_game::battle::ui::UiConfig;
 use bevy_2d_rpg_game::battle::ui::battle_log::{
-    BattleLogContainer, clear_log_on_player_turn, render_log_panel, spawn_battle_log,
-    swap_panel_for_phase,
+    BattleLogContainer, BattleLogPanel, LogHint, clear_log_on_player_action, render_log_panel,
+    spawn_battle_log, swap_panel_for_phase, toggle_log_hint,
 };
 use bevy_2d_rpg_game::battle::ui::hud::{
     EnemyNameLabel, PlayerHpFill, PlayerNameLabel, refresh_enemy_labels, refresh_player_hud,
@@ -50,6 +50,7 @@ fn ui_app(enemy_healths: &[i32]) -> (App, Vec<Entity>, Entity) {
         StatesPlugin,
     ))
     .init_resource::<MenuSelection>()
+    .init_resource::<LogView>()
     .init_resource::<UiConfig>()
     .init_state::<TurnPhase>()
     .add_message::<LogMessage>()
@@ -64,7 +65,7 @@ fn ui_app(enemy_healths: &[i32]) -> (App, Vec<Entity>, Entity) {
             .chain(),
     )
     .add_systems(Startup, (spawn_hud, spawn_battle_log, spawn_action_menu))
-    .add_systems(OnEnter(TurnPhase::PlayerTurn), clear_log_on_player_turn)
+    .add_systems(OnExit(TurnPhase::PlayerTurn), clear_log_on_player_action)
     .add_systems(
         Update,
         (
@@ -76,6 +77,7 @@ fn ui_app(enemy_healths: &[i32]) -> (App, Vec<Entity>, Entity) {
             update_menu_highlight,
             render_log_panel,
             swap_panel_for_phase,
+            toggle_log_hint,
         )
             .in_set(BattleSet::Ui),
     );
@@ -355,11 +357,12 @@ fn menu_cursor_follows_panel_visibility() {
     );
 }
 
-/// Log messages append as `Text` children of the container; entering the enemy
-/// turn widens the panel to 350 px and shows the log; returning to the player
-/// turn clears the log and restores the 200 px menu width.
+/// Log lines append as `Text` children; entering the enemy turn widens the panel
+/// to 350 px and shows the log. The lines then **persist into the player turn**
+/// (so the menu's `Log` option has something to review), with the menu restored to
+/// 200 px; they clear only when the player commits an action (leaves `PlayerTurn`).
 #[test]
-fn log_appends_and_panel_swaps_width() {
+fn log_appends_persists_into_player_turn_then_clears_on_action() {
     let (mut app, _enemies, _player) = ui_app(&[100]);
 
     let log_child_count = |app: &mut App| {
@@ -397,21 +400,140 @@ fn log_appends_and_panel_swaps_width() {
     assert_eq!(
         panel_width(&mut app),
         Val::Px(350.0),
-        "log mode widens to 350 px"
+        "the auto-shown log widens the panel to 350 px during the enemy turn"
     );
 
-    // Back to the player turn: log cleared, panel restored to 200 px.
+    // Returning to the player turn keeps the lines (reviewable via the Log menu
+    // option); the menu width restores to 200 px.
     set_phase(&mut app, TurnPhase::PlayerTurn);
     assert_eq!(
         log_child_count(&mut app),
-        0,
-        "the log is cleared on the player turn"
+        2,
+        "the log persists into the player turn"
     );
     assert_eq!(
         panel_width(&mut app),
         Val::Px(200.0),
         "the menu width is restored"
     );
+
+    // Committing an action (leaving PlayerTurn, e.g. Fight → Targeting) clears it.
+    set_phase(&mut app, TurnPhase::Targeting);
+    assert_eq!(
+        log_child_count(&mut app),
+        0,
+        "the log clears when the player commits an action"
+    );
+}
+
+/// Opening the log from the menu during the player turn (`LogView::open`) swaps
+/// the centre panel: the action menu hides and the log panel shows, even though
+/// the phase is still `PlayerTurn`. Closing it swaps back. This is the visual
+/// half of the menu's `Log` option (the input half is covered in `action_menu`).
+#[test]
+fn opening_log_view_swaps_menu_for_log_during_player_turn() {
+    let (mut app, _enemies, _player) = ui_app(&[100]);
+
+    let menu_vis = |app: &mut App| {
+        let mut q = app
+            .world_mut()
+            .query_filtered::<&Visibility, With<ActionMenuPanel>>();
+        *q.single(app.world()).unwrap()
+    };
+    let log_vis = |app: &mut App| {
+        let mut q = app
+            .world_mut()
+            .query_filtered::<&Visibility, With<BattleLogPanel>>();
+        *q.single(app.world()).unwrap()
+    };
+
+    // Player turn, log closed: menu shows, log hidden.
+    set_phase(&mut app, TurnPhase::PlayerTurn);
+    assert_eq!(menu_vis(&mut app), Visibility::Visible);
+    assert_eq!(log_vis(&mut app), Visibility::Hidden);
+
+    // Open the log overlay (as the `Log` menu action does) — still PlayerTurn.
+    app.world_mut().resource_mut::<LogView>().open = true;
+    app.update();
+    assert_eq!(
+        menu_vis(&mut app),
+        Visibility::Hidden,
+        "the action menu hides while the log overlay is open"
+    );
+    assert_eq!(
+        log_vis(&mut app),
+        Visibility::Visible,
+        "the log panel shows while the overlay is open"
+    );
+
+    // Close it: menu returns, log hides.
+    app.world_mut().resource_mut::<LogView>().open = false;
+    app.update();
+    assert_eq!(menu_vis(&mut app), Visibility::Visible);
+    assert_eq!(log_vis(&mut app), Visibility::Hidden);
+}
+
+/// The "Esc/Enter to close" hint shows only when the player opened the log from
+/// the menu (`LogView::open`), and stays hidden during the enemy-turn auto-show
+/// where there is nothing for the player to close.
+#[test]
+fn close_hint_shows_only_when_player_opened_the_log() {
+    let (mut app, _enemies, _player) = ui_app(&[100]);
+
+    let hint_vis = |app: &mut App| {
+        let mut q = app
+            .world_mut()
+            .query_filtered::<&Visibility, With<LogHint>>();
+        *q.single(app.world()).unwrap()
+    };
+
+    // Player turn, log closed: hint hidden.
+    set_phase(&mut app, TurnPhase::PlayerTurn);
+    assert_eq!(hint_vis(&mut app), Visibility::Hidden);
+
+    // Enemy-turn auto-show: the log is up, but the hint stays hidden — the player
+    // can't close it on the enemy's turn.
+    set_phase(&mut app, TurnPhase::EnemyTurn);
+    assert_eq!(
+        hint_vis(&mut app),
+        Visibility::Hidden,
+        "no close hint during the enemy-turn auto-show"
+    );
+
+    // Back to the player turn and the player opens the log from the menu: the hint
+    // appears (Inherited, so it shows with the now-visible panel).
+    set_phase(&mut app, TurnPhase::PlayerTurn);
+    app.world_mut().resource_mut::<LogView>().open = true;
+    app.update();
+    assert_eq!(
+        hint_vis(&mut app),
+        Visibility::Inherited,
+        "the hint shows when the player opened the log"
+    );
+
+    // Closing the log hides the hint again.
+    app.world_mut().resource_mut::<LogView>().open = false;
+    app.update();
+    assert_eq!(hint_vis(&mut app), Visibility::Hidden);
+}
+
+/// The close hint is styled as a footnote: italic and smaller than the log lines
+/// (which use the default ~20 px body size).
+#[test]
+fn close_hint_is_italic_and_smaller_than_log_lines() {
+    let (mut app, _enemies, _player) = ui_app(&[100]);
+
+    let mut q = app.world_mut().query_filtered::<&TextFont, With<LogHint>>();
+    let font = q.single(app.world()).unwrap();
+
+    assert_eq!(font.style, FontStyle::Italic, "the hint is italic");
+    match font.font_size {
+        FontSize::Px(px) => assert!(
+            px < 20.0,
+            "the hint ({px} px) is smaller than the default body size"
+        ),
+        other => panic!("expected a pixel font size, got {other:?}"),
+    }
 }
 
 /// A live `UiConfig` edit changes the active panel width the next frame — the
