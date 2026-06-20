@@ -14,14 +14,14 @@ use bevy::prelude::*;
 use bevy::sprite_render::ColorMaterial;
 use bevy::state::app::StatesPlugin;
 use bevy_2d_rpg_game::battle::rng::SpawnRng;
-use bevy_2d_rpg_game::characters::components::{Enemy, Player};
+use bevy_2d_rpg_game::components::{Enemy, Player};
 use bevy_2d_rpg_game::game::GamePlugin;
 use bevy_2d_rpg_game::state::GameState;
 
 /// Build the headless battle app on a fixed seed.
 ///
 /// `GamePlugin` needs more than `MinimalPlugins`: the `CharacterDef` asset +
-/// loader require `AssetPlugin`; `BattlePlugin::init_state` requires
+/// loader require `AssetPlugin`; the battle plugin's `init_state` requires
 /// `StatesPlugin`; and the menu/targeting input systems read
 /// `ButtonInput<KeyCode>` from `InputPlugin`. All three ship inside
 /// `DefaultPlugins` in the real binary but must be added explicitly here. The

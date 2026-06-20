@@ -1,7 +1,6 @@
 //! Character identity, stats, and data-driven templates.
 
 pub mod asset_loader;
-pub mod components;
 pub mod definition;
 
 use bevy::prelude::*;

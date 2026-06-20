@@ -20,7 +20,7 @@ use bevy_2d_rpg_game::battle::menu::{
 };
 use bevy_2d_rpg_game::battle::messages::LogMessage;
 use bevy_2d_rpg_game::battle::state::{BattleSet, TurnPhase};
-use bevy_2d_rpg_game::characters::components::{
+use bevy_2d_rpg_game::components::{
     CombatStats, DamageVariance, Defending, DisplayName, Health, Player,
 };
 

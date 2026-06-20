@@ -14,7 +14,7 @@ use std::collections::HashMap;
 
 use bevy::prelude::*;
 
-use crate::characters::components::{DisplayName, Enemy, EnemyHealthBar, Health, Player, Targeted};
+use crate::components::{DisplayName, Enemy, EnemyHealthBar, Health, Player, Targeted};
 use crate::state::GameState;
 
 /// Yellow used to highlight the enemy name label under the targeting cursor.

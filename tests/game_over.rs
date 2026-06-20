@@ -9,7 +9,7 @@
 use bevy::prelude::*;
 use bevy::state::app::StatesPlugin;
 
-use bevy_2d_rpg_game::characters::components::Health;
+use bevy_2d_rpg_game::components::Health;
 use bevy_2d_rpg_game::game_over::{
     GameOverLabel, GameOverRoot, GameOverSelection, game_over_input, spawn_game_over,
     update_game_over_highlight,

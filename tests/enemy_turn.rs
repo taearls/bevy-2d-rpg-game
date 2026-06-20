@@ -26,11 +26,11 @@ use bevy_2d_rpg_game::battle::menu::{MenuSelection, on_enter_player_turn};
 use bevy_2d_rpg_game::battle::messages::LogMessage;
 use bevy_2d_rpg_game::battle::rng::DamageRng;
 use bevy_2d_rpg_game::battle::state::{BattleResult, BattleSet, TurnPhase};
-use bevy_2d_rpg_game::characters::components::{
-    CombatStats, DamageVariance, Defending, DisplayName, Enemy, Health, Player,
-};
 use bevy_2d_rpg_game::combat::events::{AttackRequested, DamageDealt};
 use bevy_2d_rpg_game::combat::resolve::{apply_attacks, check_battle_end, on_died_hide_sprite};
+use bevy_2d_rpg_game::components::{
+    CombatStats, DamageVariance, Defending, DisplayName, Enemy, Health, Player,
+};
 
 /// A frame's worth of virtual time small enough that one tick never crosses a
 /// full [`ATTACK_INTERVAL`]. Used to prove the "no second attack before 1.0 s"

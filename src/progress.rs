@@ -11,8 +11,8 @@
 use bevy::prelude::*;
 
 use crate::battle::spawn::Roster;
-use crate::characters::components::Health;
 use crate::characters::definition::CharacterDef;
+use crate::components::Health;
 
 /// The player's persistent state between battles.
 ///

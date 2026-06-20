@@ -50,7 +50,7 @@ const ENCOUNTER_DISTANCE_MAX: f32 = 1500.0;
 
 /// Marks the player's map avatar (distinct from the battle [`Player`]).
 ///
-/// [`Player`]: crate::characters::components::Player
+/// [`Player`]: crate::components::Player
 #[derive(Component, Debug)]
 pub struct MapPlayer;
 

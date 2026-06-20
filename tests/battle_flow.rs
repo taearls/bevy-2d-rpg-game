@@ -33,11 +33,11 @@ use bevy_2d_rpg_game::battle::state::{BattleResult, BattleSet, TurnPhase};
 use bevy_2d_rpg_game::battle::targeting::{
     SelectedTarget, on_enter_targeting, on_exit_targeting, targeting_input,
 };
-use bevy_2d_rpg_game::characters::components::{
-    CombatStats, DamageVariance, DisplayName, Enemy, Health, Player,
-};
 use bevy_2d_rpg_game::combat::events::{AttackRequested, DamageDealt};
 use bevy_2d_rpg_game::combat::resolve::{apply_attacks, check_battle_end, on_died_hide_sprite};
+use bevy_2d_rpg_game::components::{
+    CombatStats, DamageVariance, DisplayName, Enemy, Health, Player,
+};
 
 /// A 100 ms virtual frame — fine-grained enough that the enemy-turn interval
 /// spans many of them.

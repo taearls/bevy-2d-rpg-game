@@ -1,8 +1,9 @@
-//! ECS components describing a battle character's identity and combat profile.
+//! Shared ECS component vocabulary for combat entities — identity, stats, and
+//! battle-state markers used across the `battle`, `combat`, and `map` features.
 //!
-//! These are plain data components — the spawning, rendering, and combat
-//! systems that consume them arrive in later phases. Mirrors the per-character
-//! fields of the Godot `BattleCharacter.cs` / `CombatStats.cs` originals.
+//! These are plain data components consumed by the spawning, rendering, and
+//! combat systems in those modules. Mirrors the per-character fields of the
+//! Godot `BattleCharacter.cs` / `CombatStats.cs` originals.
 
 use bevy::prelude::*;
 

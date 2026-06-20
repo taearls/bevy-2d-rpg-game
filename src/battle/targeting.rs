@@ -11,7 +11,7 @@
 
 use bevy::prelude::*;
 
-use crate::characters::components::{Enemy, Health, Player, Targeted};
+use crate::components::{Enemy, Health, Player, Targeted};
 
 use super::spawn::BattleLayout;
 use super::state::TurnPhase;

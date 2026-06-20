@@ -14,7 +14,7 @@ use crate::battle::enemy_turn::EnemyTurnQueue;
 use crate::battle::messages::LogMessage;
 use crate::battle::rng::DamageRng;
 use crate::battle::state::{BattleResult, TurnPhase};
-use crate::characters::components::{
+use crate::components::{
     CombatStats, DamageVariance, Defending, DisplayName, Enemy, Health, Player,
 };
 

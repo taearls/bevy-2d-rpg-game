@@ -31,7 +31,7 @@ use bevy_inspector_egui::bevy_egui::{
 };
 use bevy_inspector_egui::bevy_inspector;
 
-use crate::characters::components::{DisplayName, Enemy, Health};
+use crate::components::{DisplayName, Enemy, Health};
 
 /// The entity whose component inspector is currently shown, or `None` when the
 /// panel is dismissed. Set by a right-click (or Control+left-click) on a sprite,
