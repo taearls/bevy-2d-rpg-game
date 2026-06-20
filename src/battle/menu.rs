@@ -10,7 +10,7 @@
 
 use bevy::prelude::*;
 
-use crate::characters::components::{Defending, DisplayName, Player};
+use crate::components::{Defending, DisplayName, Player};
 use crate::state::GameState;
 
 use super::messages::LogMessage;

@@ -5,10 +5,10 @@
 //! event vocabulary ([`events`]) is shared by producers (targeting, enemy turn)
 //! and consumers (HUD, log), and the resolution plumbing ([`resolve`]) lives on
 //! its own. The systems are wired into the chained [`BattleSet`]s by
-//! [`BattlePlugin`].
+//! the battle plugin ([`battle::plugin`]).
 //!
 //! [`BattleSet`]: crate::battle::state::BattleSet
-//! [`BattlePlugin`]: crate::battle::BattlePlugin
+//! [`battle::plugin`]: crate::battle::plugin
 
 pub mod damage;
 pub mod events;

@@ -76,17 +76,13 @@ pub struct GameOverLabel(pub usize);
 /// Wires the game-over screen: spawns it on entering [`GameState::GameOver`] and
 /// runs keyboard navigation + the highlight redraw while it is up. The UI is
 /// `DespawnOnExit(GameOver)`, so it tears down automatically on either choice.
-pub struct GameOverPlugin;
-
-impl Plugin for GameOverPlugin {
-    fn build(&self, app: &mut App) {
-        app.init_resource::<GameOverSelection>()
-            .add_systems(OnEnter(GameState::GameOver), spawn_game_over)
-            .add_systems(
-                Update,
-                (game_over_input, update_game_over_highlight).run_if(in_state(GameState::GameOver)),
-            );
-    }
+pub(crate) fn plugin(app: &mut App) {
+    app.init_resource::<GameOverSelection>()
+        .add_systems(OnEnter(GameState::GameOver), spawn_game_over)
+        .add_systems(
+            Update,
+            (game_over_input, update_game_over_highlight).run_if(in_state(GameState::GameOver)),
+        );
 }
 
 /// `OnEnter(GameOver)`: highlight the first option and build the menu UI tree — a

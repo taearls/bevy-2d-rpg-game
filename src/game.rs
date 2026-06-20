@@ -1,10 +1,5 @@
 use bevy::prelude::*;
 
-use crate::battle::BattlePlugin;
-use crate::characters::CharactersPlugin;
-use crate::game_over::GameOverPlugin;
-use crate::main_menu::MainMenuPlugin;
-use crate::map::MapPlugin;
 use crate::progress::{PlayerProgress, seed_player_progress};
 use crate::state::GameState;
 
@@ -29,18 +24,18 @@ impl Plugin for GamePlugin {
             .add_systems(Startup, spawn_camera)
             .add_systems(Update, seed_player_progress)
             .add_plugins((
-                MainMenuPlugin,
-                MapPlugin,
-                GameOverPlugin,
-                CharactersPlugin,
-                BattlePlugin,
+                crate::main_menu::plugin,
+                crate::map::plugin,
+                crate::game_over::plugin,
+                crate::characters::plugin,
+                crate::battle::plugin,
             ));
 
         // The egui debug inspector (right-click a sprite to inspect it) is
         // compiled in only under the `debug-inspector` feature, so default/release
         // builds and headless tests never link egui.
         #[cfg(feature = "debug-inspector")]
-        app.add_plugins(crate::debug::DebugPlugin);
+        app.add_plugins(crate::debug::plugin);
     }
 }
 

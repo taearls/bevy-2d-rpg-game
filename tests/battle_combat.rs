@@ -14,11 +14,9 @@ use bevy::state::app::StatesPlugin;
 use bevy_2d_rpg_game::battle::messages::LogMessage;
 use bevy_2d_rpg_game::battle::rng::DamageRng;
 use bevy_2d_rpg_game::battle::state::{BattleSet, TurnPhase};
-use bevy_2d_rpg_game::characters::components::{
-    CombatStats, DamageVariance, DisplayName, Enemy, Health,
-};
 use bevy_2d_rpg_game::combat::events::{AttackRequested, DamageDealt};
 use bevy_2d_rpg_game::combat::resolve::{apply_attacks, on_died_hide_sprite};
+use bevy_2d_rpg_game::components::{CombatStats, DamageVariance, DisplayName, Enemy, Health};
 
 /// A headless world with the combat resolver, a fixed-seed `DamageRng` (so the
 /// variance roll — and thus the damage — is deterministic), and the `Died`

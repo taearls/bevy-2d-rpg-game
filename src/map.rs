@@ -50,7 +50,7 @@ const ENCOUNTER_DISTANCE_MAX: f32 = 1500.0;
 
 /// Marks the player's map avatar (distinct from the battle [`Player`]).
 ///
-/// [`Player`]: crate::characters::components::Player
+/// [`Player`]: crate::components::Player
 #[derive(Component, Debug)]
 pub struct MapPlayer;
 
@@ -101,20 +101,16 @@ pub struct EncounterTracker {
 /// runs movement, the encounter check, and the HP readout while it is up. Every
 /// spawned entity is `DespawnOnExit(Map)`, so leaving the map (into a battle or
 /// back to the title) cleans the scene up automatically.
-pub struct MapPlugin;
-
-impl Plugin for MapPlugin {
-    fn build(&self, app: &mut App) {
-        app.init_resource::<MapRng>()
-            .init_resource::<EncounterTracker>()
-            .add_systems(OnEnter(GameState::Map), setup_map)
-            .add_systems(
-                Update,
-                (move_player, check_encounter, update_map_hp_text)
-                    .chain()
-                    .run_if(in_state(GameState::Map)),
-            );
-    }
+pub(crate) fn plugin(app: &mut App) {
+    app.init_resource::<MapRng>()
+        .init_resource::<EncounterTracker>()
+        .add_systems(OnEnter(GameState::Map), setup_map)
+        .add_systems(
+            Update,
+            (move_player, check_encounter, update_map_hp_text)
+                .chain()
+                .run_if(in_state(GameState::Map)),
+        );
 }
 
 /// The unit movement direction for the given input axes.

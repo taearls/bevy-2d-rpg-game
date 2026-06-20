@@ -16,6 +16,9 @@ use bevy::asset::LoadState;
 use bevy::prelude::*;
 use bevy::sprite::{SpritePickingMode, SpritePickingSettings};
 
+use crate::combat::events::{AttackRequested, DamageDealt};
+use crate::combat::resolve::{apply_attacks, check_battle_end, on_died_hide_sprite};
+use crate::components::{CombatStats, DamageVariance, Health, Player};
 use enemy_turn::{EnemyTurnQueue, on_enter_enemy_turn, tick_enemy_turn};
 use menu::{
     MenuSelection, menu_input, on_enter_player_turn, spawn_action_menu, update_menu_highlight,
@@ -26,16 +29,11 @@ use state::{BattleResult, BattleSet, TurnPhase};
 use targeting::{
     SelectedTarget, on_enter_targeting, on_exit_targeting, targeting_input, update_target_visuals,
 };
-use ui::BattleUiPlugin;
-
-use crate::characters::components::{CombatStats, DamageVariance, Health, Player};
 // Marker / label components — only registered for reflection under the debug
 // inspector, so their import is gated to the same feature to keep a default
 // build free of unused-import warnings.
 #[cfg(feature = "debug-inspector")]
-use crate::characters::components::{Defending, DisplayName, Enemy, EnemyHealthBar, Targeted};
-use crate::combat::events::{AttackRequested, DamageDealt};
-use crate::combat::resolve::{apply_attacks, check_battle_end, on_died_hide_sprite};
+use crate::components::{Defending, DisplayName, Enemy, EnemyHealthBar, Targeted};
 use crate::progress::PlayerProgress;
 use crate::state::GameState;
 
@@ -43,119 +41,115 @@ use crate::state::GameState;
 /// roster, spawns the player + enemy lineup once the templates finish loading,
 /// and runs the [`TurnPhase`] state machine with its chained [`BattleSet`]s, the
 /// player action menu, enemy targeting, and combat resolution.
-pub struct BattlePlugin;
-
-impl Plugin for BattlePlugin {
-    fn build(&self, app: &mut App) {
-        app.add_plugins(BattleUiPlugin)
-            // Register the former Godot `[Export(Range)]` tuning knobs for
-            // reflection so the Phase 8 inspector can edit them live. Registered
-            // here in the plugin that wires these types into the battle (the
-            // `UiConfig` knob is registered alongside in `BattleUiPlugin`).
-            // These tuning-knob types stay feature-independent; the inspector-only
-            // marker components are gated to `debug-inspector` below.
-            .register_type::<BattleLayout>()
-            .register_type::<Health>()
-            .register_type::<CombatStats>()
-            .register_type::<DamageVariance>()
-            .init_resource::<BattleLayout>()
-            .init_resource::<MenuSelection>()
-            .init_resource::<SelectedTarget>()
-            .init_resource::<EnemyTurnQueue>()
-            .init_resource::<BattleResult>()
-            // Full-rectangle sprite hits, matching the Godot click areas, instead
-            // of the default alpha-threshold test.
-            .insert_resource(SpritePickingSettings {
-                picking_mode: SpritePickingMode::BoundingBox,
-                ..default()
-            })
-            .init_state::<TurnPhase>()
-            .add_message::<LogMessage>()
-            .add_message::<AttackRequested>()
-            .add_message::<DamageDealt>()
-            .add_observer(on_died_hide_sprite)
-            // The four battle phases run in a fixed order every frame: input
-            // queues attacks, Resolve applies them, Cleanup decides the battle's
-            // fate, Ui redraws from the resulting world state. The whole chain is
-            // gated on `InBattle` so none of it runs — and the keyboard isn't
-            // double-read against the main menu — while the start-up menu is up.
-            .configure_sets(
-                Update,
-                (
-                    BattleSet::Input,
-                    BattleSet::Resolve,
-                    BattleSet::Cleanup,
-                    BattleSet::Ui,
-                )
-                    .chain()
-                    .run_if(in_state(GameState::InBattle)),
+pub(crate) fn plugin(app: &mut App) {
+    app.add_plugins(ui::plugin)
+        // Register the former Godot `[Export(Range)]` tuning knobs for
+        // reflection so the Phase 8 inspector can edit them live. Registered
+        // here in the plugin that wires these types into the battle (the
+        // `UiConfig` knob is registered alongside in `ui::plugin`).
+        // These tuning-knob types stay feature-independent; the inspector-only
+        // marker components are gated to `debug-inspector` below.
+        .register_type::<BattleLayout>()
+        .register_type::<Health>()
+        .register_type::<CombatStats>()
+        .register_type::<DamageVariance>()
+        .init_resource::<BattleLayout>()
+        .init_resource::<MenuSelection>()
+        .init_resource::<SelectedTarget>()
+        .init_resource::<EnemyTurnQueue>()
+        .init_resource::<BattleResult>()
+        // Full-rectangle sprite hits, matching the Godot click areas, instead
+        // of the default alpha-threshold test.
+        .insert_resource(SpritePickingSettings {
+            picking_mode: SpritePickingMode::BoundingBox,
+            ..default()
+        })
+        .init_state::<TurnPhase>()
+        .add_message::<LogMessage>()
+        .add_message::<AttackRequested>()
+        .add_message::<DamageDealt>()
+        .add_observer(on_died_hide_sprite)
+        // The four battle phases run in a fixed order every frame: input
+        // queues attacks, Resolve applies them, Cleanup decides the battle's
+        // fate, Ui redraws from the resulting world state. The whole chain is
+        // gated on `InBattle` so none of it runs — and the keyboard isn't
+        // double-read against the main menu — while the start-up menu is up.
+        .configure_sets(
+            Update,
+            (
+                BattleSet::Input,
+                BattleSet::Resolve,
+                BattleSet::Cleanup,
+                BattleSet::Ui,
             )
-            // Preload the roster at startup so the templates are resident the
-            // instant the player picks "New Game"; the combatant + action-menu
-            // entities, by contrast, are spawned only when a battle actually
-            // begins so they never sit behind the menu.
-            .add_systems(Startup, load_roster)
-            .add_systems(
-                OnEnter(GameState::InBattle),
-                (
-                    reset_turn_phase,
-                    spawn_action_menu,
-                    spawn_selection_indicator,
+                .chain()
+                .run_if(in_state(GameState::InBattle)),
+        )
+        // Preload the roster at startup so the templates are resident the
+        // instant the player picks "New Game"; the combatant + action-menu
+        // entities, by contrast, are spawned only when a battle actually
+        // begins so they never sit behind the menu.
+        .add_systems(Startup, load_roster)
+        .add_systems(
+            OnEnter(GameState::InBattle),
+            (
+                reset_turn_phase,
+                spawn_action_menu,
+                spawn_selection_indicator,
+            ),
+        )
+        .add_systems(OnEnter(TurnPhase::BattleOver), log_continue_hint)
+        .add_systems(OnEnter(TurnPhase::PlayerTurn), on_enter_player_turn)
+        .add_systems(OnEnter(TurnPhase::Targeting), on_enter_targeting)
+        .add_systems(OnExit(TurnPhase::Targeting), on_exit_targeting)
+        .add_systems(OnEnter(TurnPhase::EnemyTurn), on_enter_enemy_turn)
+        .add_systems(
+            Update,
+            (
+                report_roster_load_failures,
+                spawn_battle.run_if(
+                    in_state(GameState::InBattle)
+                        .and_then(roster_ready)
+                        .and_then(battle_unspawned),
                 ),
-            )
-            .add_systems(OnEnter(TurnPhase::BattleOver), log_continue_hint)
-            .add_systems(OnEnter(TurnPhase::PlayerTurn), on_enter_player_turn)
-            .add_systems(OnEnter(TurnPhase::Targeting), on_enter_targeting)
-            .add_systems(OnExit(TurnPhase::Targeting), on_exit_targeting)
-            .add_systems(OnEnter(TurnPhase::EnemyTurn), on_enter_enemy_turn)
-            .add_systems(
-                Update,
-                (
-                    report_roster_load_failures,
-                    spawn_battle.run_if(
-                        in_state(GameState::InBattle)
-                            .and_then(roster_ready)
-                            .and_then(battle_unspawned),
-                    ),
-                    battle_over_input.run_if(
-                        in_state(GameState::InBattle).and_then(in_state(TurnPhase::BattleOver)),
-                    ),
-                    menu_input
-                        .in_set(BattleSet::Input)
-                        .run_if(in_state(TurnPhase::PlayerTurn)),
-                    targeting_input
-                        .in_set(BattleSet::Input)
-                        .run_if(in_state(TurnPhase::Targeting)),
-                    tick_enemy_turn
-                        .in_set(BattleSet::Input)
-                        .run_if(in_state(TurnPhase::EnemyTurn)),
-                    apply_attacks.in_set(BattleSet::Resolve),
-                    // Decide the battle's fate only on the frame an attack
-                    // actually landed. Gating on `DamageDealt` (written by
-                    // `apply_attacks`) rather than on the `Targeting` state keeps
-                    // a *cancelled* targeting (Escape → PlayerTurn, no attack)
-                    // from being overridden into EnemyTurn/BattleOver.
-                    check_battle_end
-                        .in_set(BattleSet::Cleanup)
-                        .run_if(on_message::<DamageDealt>),
-                    update_menu_highlight.in_set(BattleSet::Ui),
-                    update_target_visuals.in_set(BattleSet::Ui),
-                    render_log_messages.in_set(BattleSet::Ui),
+                battle_over_input.run_if(
+                    in_state(GameState::InBattle).and_then(in_state(TurnPhase::BattleOver)),
                 ),
-            );
+                menu_input
+                    .in_set(BattleSet::Input)
+                    .run_if(in_state(TurnPhase::PlayerTurn)),
+                targeting_input
+                    .in_set(BattleSet::Input)
+                    .run_if(in_state(TurnPhase::Targeting)),
+                tick_enemy_turn
+                    .in_set(BattleSet::Input)
+                    .run_if(in_state(TurnPhase::EnemyTurn)),
+                apply_attacks.in_set(BattleSet::Resolve),
+                // Decide the battle's fate only on the frame an attack
+                // actually landed. Gating on `DamageDealt` (written by
+                // `apply_attacks`) rather than on the `Targeting` state keeps
+                // a *cancelled* targeting (Escape → PlayerTurn, no attack)
+                // from being overridden into EnemyTurn/BattleOver.
+                check_battle_end
+                    .in_set(BattleSet::Cleanup)
+                    .run_if(on_message::<DamageDealt>),
+                update_menu_highlight.in_set(BattleSet::Ui),
+                update_target_visuals.in_set(BattleSet::Ui),
+                render_log_messages.in_set(BattleSet::Ui),
+            ),
+        );
 
-        // The marker / label components carry no tuning knobs — they're only
-        // worth reflecting so the debug inspector can expand every component on a
-        // combatant instead of showing them opaque. Gated on the feature so a
-        // release build doesn't register reflection it never reads.
-        #[cfg(feature = "debug-inspector")]
-        app.register_type::<Player>()
-            .register_type::<Enemy>()
-            .register_type::<DisplayName>()
-            .register_type::<Defending>()
-            .register_type::<Targeted>()
-            .register_type::<EnemyHealthBar>();
-    }
+    // The marker / label components carry no tuning knobs — they're only
+    // worth reflecting so the debug inspector can expand every component on a
+    // combatant instead of showing them opaque. Gated on the feature so a
+    // release build doesn't register reflection it never reads.
+    #[cfg(feature = "debug-inspector")]
+    app.register_type::<Player>()
+        .register_type::<Enemy>()
+        .register_type::<DisplayName>()
+        .register_type::<Defending>()
+        .register_type::<Targeted>()
+        .register_type::<EnemyHealthBar>();
 }
 
 /// Gate that turns true while no combatants are spawned, so [`spawn_battle`] runs

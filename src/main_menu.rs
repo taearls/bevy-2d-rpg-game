@@ -83,18 +83,14 @@ pub struct MainMenuLabel(pub usize);
 /// Wires the start-up menu: spawns it on entering [`GameState::MainMenu`],
 /// despawns it on leaving, and runs keyboard navigation + the highlight redraw
 /// while it is up.
-pub struct MainMenuPlugin;
-
-impl Plugin for MainMenuPlugin {
-    fn build(&self, app: &mut App) {
-        app.init_resource::<MainMenuSelection>()
-            .add_systems(OnEnter(GameState::MainMenu), spawn_main_menu)
-            .add_systems(OnExit(GameState::MainMenu), despawn_main_menu)
-            .add_systems(
-                Update,
-                (main_menu_input, update_main_menu_highlight).run_if(in_state(GameState::MainMenu)),
-            );
-    }
+pub(crate) fn plugin(app: &mut App) {
+    app.init_resource::<MainMenuSelection>()
+        .add_systems(OnEnter(GameState::MainMenu), spawn_main_menu)
+        .add_systems(OnExit(GameState::MainMenu), despawn_main_menu)
+        .add_systems(
+            Update,
+            (main_menu_input, update_main_menu_highlight).run_if(in_state(GameState::MainMenu)),
+        );
 }
 
 /// `OnEnter(MainMenu)`: highlight the first option and build the menu UI tree —

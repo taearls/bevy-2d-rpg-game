@@ -21,7 +21,7 @@ use std::time::Duration;
 
 use bevy::prelude::*;
 
-use crate::characters::components::{Enemy, Health, Player};
+use crate::components::{Enemy, Health, Player};
 
 use super::state::TurnPhase;
 use crate::combat::events::AttackRequested;

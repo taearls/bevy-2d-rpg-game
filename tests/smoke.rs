@@ -14,14 +14,14 @@ use bevy::prelude::*;
 use bevy::sprite_render::ColorMaterial;
 use bevy::state::app::StatesPlugin;
 use bevy_2d_rpg_game::battle::rng::SpawnRng;
-use bevy_2d_rpg_game::characters::components::{Enemy, Player};
+use bevy_2d_rpg_game::components::{Enemy, Player};
 use bevy_2d_rpg_game::game::GamePlugin;
 use bevy_2d_rpg_game::state::GameState;
 
 /// Build the headless battle app on a fixed seed.
 ///
 /// `GamePlugin` needs more than `MinimalPlugins`: the `CharacterDef` asset +
-/// loader require `AssetPlugin`; `BattlePlugin::init_state` requires
+/// loader require `AssetPlugin`; the battle plugin's `init_state` requires
 /// `StatesPlugin`; and the menu/targeting input systems read
 /// `ButtonInput<KeyCode>` from `InputPlugin`. All three ship inside
 /// `DefaultPlugins` in the real binary but must be added explicitly here. The
@@ -107,18 +107,16 @@ fn full_stack_spawns_seeded_battle_and_runs_ten_frames() {
     }
 }
 
-/// `DebugPlugin` is a no-op without a `RenderApp`: on a headless `MinimalPlugins`
+/// The debug plugin is a no-op without a `RenderApp`: on a headless `MinimalPlugins`
 /// app it must build and run frames without pulling in `EguiPlugin` (which needs
 /// the renderer) and without panicking. This locks in the `get_sub_app(RenderApp)`
 /// early-return that keeps `cargo test --features debug-inspector` green; only
-/// compiled when the feature is on, since `DebugPlugin` is otherwise absent.
+/// compiled when the feature is on, since the debug plugin is otherwise absent.
 #[cfg(feature = "debug-inspector")]
 #[test]
 fn debug_plugin_is_noop_when_headless() {
-    use bevy_2d_rpg_game::debug::DebugPlugin;
-
     let mut app = App::new();
-    app.add_plugins((MinimalPlugins, DebugPlugin));
+    app.add_plugins((MinimalPlugins, bevy_2d_rpg_game::debug::plugin));
     // A few frames with no renderer present must not panic.
     for _ in 0..3 {
         app.update();

@@ -1,8 +1,8 @@
 //! Parity with the Godot `CharacterStatsTest`: component composition and serde
 //! defaults for the data-driven character templates.
 
-use bevy_2d_rpg_game::characters::components::{CombatStats, DamageVariance, DisplayName, Health};
 use bevy_2d_rpg_game::characters::definition::{CharacterDef, CombatStatsDef};
+use bevy_2d_rpg_game::components::{CombatStats, DamageVariance, DisplayName, Health};
 
 #[test]
 fn health_full_starts_at_max_and_is_alive() {

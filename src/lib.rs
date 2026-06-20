@@ -7,11 +7,13 @@
 pub mod battle;
 pub mod characters;
 pub mod combat;
+pub mod components;
 #[cfg(feature = "debug-inspector")]
 pub mod debug;
 pub mod game;
 pub mod game_over;
 pub mod main_menu;
 pub mod map;
+pub mod prelude;
 pub mod progress;
 pub mod state;

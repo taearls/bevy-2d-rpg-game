@@ -27,9 +27,7 @@ use bevy_2d_rpg_game::battle::ui::hud::{
     EnemyNameLabel, PlayerHpFill, PlayerNameLabel, refresh_enemy_labels, refresh_player_hud,
     spawn_hud, sync_enemy_health_bars, sync_enemy_label_text, update_enemy_label_highlight,
 };
-use bevy_2d_rpg_game::characters::components::{
-    DisplayName, Enemy, EnemyHealthBar, Health, Player, Targeted,
-};
+use bevy_2d_rpg_game::components::{DisplayName, Enemy, EnemyHealthBar, Health, Player, Targeted};
 
 /// Yellow target highlight, matched against an `EnemyNameLabel`'s `TextColor`.
 const HIGHLIGHT: Color = Color::srgb(1.0, 1.0, 0.0);

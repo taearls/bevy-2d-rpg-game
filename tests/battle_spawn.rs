@@ -11,10 +11,10 @@ use bevy::ecs::system::RunSystemOnce;
 use bevy::prelude::*;
 
 use bevy_2d_rpg_game::battle::spawn::{BattleLayout, RosterEntry, spawn_enemies, spawn_player};
-use bevy_2d_rpg_game::characters::components::{
+use bevy_2d_rpg_game::characters::definition::{CharacterDef, CombatStatsDef};
+use bevy_2d_rpg_game::components::{
     CombatStats, DamageVariance, DisplayName, Enemy, Health, Player,
 };
-use bevy_2d_rpg_game::characters::definition::{CharacterDef, CombatStatsDef};
 
 /// Minimal headless world with just the asset infrastructure (for `AssetServer`).
 /// `Image` is registered explicitly so `Sprite::from_image` can mint texture

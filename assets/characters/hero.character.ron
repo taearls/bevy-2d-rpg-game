@@ -3,7 +3,7 @@
     display_name: "Hero",
     sprite: "sprites/hero.png",
     stats: (
-        max_health: 120,
+        max_health: 50,
         attack: 12,
         defense: 8,
     ),
