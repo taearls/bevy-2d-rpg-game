@@ -14,5 +14,6 @@ pub mod game;
 pub mod game_over;
 pub mod main_menu;
 pub mod map;
+pub mod prelude;
 pub mod progress;
 pub mod state;
