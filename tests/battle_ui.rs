@@ -11,6 +11,7 @@
 //! damage flows through `Changed<Health>` exactly as in play.
 
 use bevy::prelude::*;
+use bevy::scene::ScenePlugin;
 use bevy::state::app::StatesPlugin;
 
 use bevy_2d_rpg_game::battle::menu::{
@@ -39,37 +40,45 @@ const WHITE: Color = Color::WHITE;
 /// app, the enemy entities, and the player entity.
 fn ui_app(enemy_healths: &[i32]) -> (App, Vec<Entity>, Entity) {
     let mut app = App::new();
-    app.add_plugins((MinimalPlugins, StatesPlugin))
-        .init_resource::<MenuSelection>()
-        .init_resource::<UiConfig>()
-        .init_state::<TurnPhase>()
-        .add_message::<LogMessage>()
-        .configure_sets(
-            Update,
-            (
-                BattleSet::Input,
-                BattleSet::Resolve,
-                BattleSet::Cleanup,
-                BattleSet::Ui,
-            )
-                .chain(),
+    // `AssetPlugin` + `ScenePlugin` are required because the UI spawners now build
+    // their hierarchies with `bsn!` + `spawn_scene` (which the real binary gets via
+    // `DefaultPlugins`); they are not part of `MinimalPlugins`.
+    app.add_plugins((
+        MinimalPlugins,
+        AssetPlugin::default(),
+        ScenePlugin,
+        StatesPlugin,
+    ))
+    .init_resource::<MenuSelection>()
+    .init_resource::<UiConfig>()
+    .init_state::<TurnPhase>()
+    .add_message::<LogMessage>()
+    .configure_sets(
+        Update,
+        (
+            BattleSet::Input,
+            BattleSet::Resolve,
+            BattleSet::Cleanup,
+            BattleSet::Ui,
         )
-        .add_systems(Startup, (spawn_hud, spawn_battle_log, spawn_action_menu))
-        .add_systems(OnEnter(TurnPhase::PlayerTurn), clear_log_on_player_turn)
-        .add_systems(
-            Update,
-            (
-                refresh_player_hud,
-                refresh_enemy_labels,
-                sync_enemy_label_text,
-                update_enemy_label_highlight,
-                sync_enemy_health_bars,
-                update_menu_highlight,
-                render_log_panel,
-                swap_panel_for_phase,
-            )
-                .in_set(BattleSet::Ui),
-        );
+            .chain(),
+    )
+    .add_systems(Startup, (spawn_hud, spawn_battle_log, spawn_action_menu))
+    .add_systems(OnEnter(TurnPhase::PlayerTurn), clear_log_on_player_turn)
+    .add_systems(
+        Update,
+        (
+            refresh_player_hud,
+            refresh_enemy_labels,
+            sync_enemy_label_text,
+            update_enemy_label_highlight,
+            sync_enemy_health_bars,
+            update_menu_highlight,
+            render_log_panel,
+            swap_panel_for_phase,
+        )
+            .in_set(BattleSet::Ui),
+    );
 
     let player = app
         .world_mut()
@@ -92,8 +101,8 @@ fn ui_app(enemy_healths: &[i32]) -> (App, Vec<Entity>, Entity) {
                     Visibility::Visible,
                 ))
                 .id();
-            // The production path spawns the name label + mini HP bar via
-            // `Commands` (`spawn_enemy_health_bar`); here we mirror the two
+            // The production path spawns the name label + mini HP bar inline in
+            // the enemy `bsn!` scene; here we mirror the two
             // entities the assertions touch — the `EnemyNameLabel` (for the label
             // count and targeting-highlight cases) and the fill quad carrying
             // `EnemyHealthBar` (for the scale case) — directly through the world

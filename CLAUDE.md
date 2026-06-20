@@ -43,6 +43,18 @@ Each gameplay feature is a module exposing a **free `fn plugin(app: &mut App)`**
 
 `main.rs` is a thin shell: `DefaultPlugins` (window, nearest-neighbor sampling, `AssetMetaCheck::Never` — required so the wasm dev server doesn't break asset loads) + `GamePlugin`.
 
+### UI via `bsn!`
+
+UI and menu hierarchies are authored with the Bevy 0.19 **`bsn!` macro** + `commands.spawn_scene(...)`, not nested `.with_children(...)` closures. This covers the action menu (`battle/menu.rs`), the HUD (`battle/ui/hud.rs`), the battle log (`battle/ui/battle_log.rs`), the main menu / game-over screens, and the enemy + world-space HP-bar hierarchy (`battle/spawn.rs`). The conventions that fall out of `bsn!`'s `Template` system:
+
+- **Components used in a `bsn!` need a `Template`.** A marker just needs `#[derive(Default, Clone)]` (the blanket `Default + Clone → Template` impl). A data component written in struct/tuple form (`Health { current, max }`, `Enemy { index }`) — or any component with an `Entity`/`Handle` field — needs `#[derive(FromTemplate)]`. Deriving `FromTemplate` **replaces** the blanket impl, so such a type is no longer a plain `Template` value.
+- **Constructor-form values go through `template_value(...)`** — e.g. `template_value(DespawnOnExit(GameState::InBattle))`, `template_value(Transform::from_xyz(...))`, `template_value(BorderColor::all(...))`. `template_value` requires the argument to *be* a `Template` (a `Default + Clone` type like `Transform`/`Sprite`/`BorderColor`). A `FromTemplate`-deriving type (`Health`, `Sprite { ... }` field form) must instead use the macro's struct/tuple syntax — passing one to `template_value` fails with a misleading "does not implement `FromTemplate` … `Unpin`" error.
+- **`DespawnOnExit<S>` can't be written bare** in `bsn!` (the macro can't infer the generic); always `template_value(DespawnOnExit(...))`.
+- **Loops:** `bsn!` has no loop syntax. Index-parametrized rows (menus) are built as a `Vec<impl Scene>` (which is a `SceneList`) outside the macro and spliced into a `Children [ ... {rows} ]` block; each row is a small `fn menu_row(index, label) -> impl Scene`.
+- **Self-references:** an entity's own id is reached with `#name` (e.g. the enemy is tagged `#enemy`, and its HP-bar children carry `EnemyHealthBar { owner: #enemy }`). Keep such children **inline in the same `bsn!`** — the `#name` scope is per-invocation, so the enemy overlay is built inline in `spawn.rs` (the HP-bar styling constants are `pub(crate)` for that), not in a separate helper.
+- **Observers:** attach with `on(handler_fn)` inside the `bsn!` (the enemy's `on(on_enemy_clicked)`), replacing the old `.observe(...)` chain.
+- **Tests:** `bsn!` resolution needs `AssetPlugin` + `ScenePlugin` in the `App`. The binary gets both from `DefaultPlugins`; headless tests in `tests/` that spawn UI/enemy scenes add them explicitly alongside `MinimalPlugins`/`StatesPlugin`.
+
 ### Two-level state machine
 
 - **`GameState`** (`src/state.rs`): which screen — `MainMenu → Map → InBattle → GameOver`. All battle systems are gated `run_if(in_state(GameState::InBattle))`, so battle UI/combatants exist only during a fight.
@@ -80,7 +92,7 @@ A battle spawns a fresh player entity tagged `DespawnOnExit(InBattle)`, so HP ca
 
 - **Bevy 0.19** — APIs differ from older tutorials (messages via `add_message`/`MessageWriter`/`on_message`, `DespawnOnExit`, `single()` returning `Result`). Match surrounding code; don't port 0.15-era idioms.
 - **Clippy pedantic is on** (`Cargo.toml` `[lints.clippy]`), with deliberate allow-backs for Bevy-hostile lints (`needless_pass_by_value`, `cast_precision_loss`, `type_complexity`, …). Don't fight these; add a justified allow-back to `Cargo.toml` if a new one fires on idiomatic Bevy code.
-- **Bevy features are hand-picked** in `Cargo.toml` with `default-features = false` to keep the wasm bundle and compile times small (no 3D/PBR/glTF/audio/scene). If a new Bevy API fails to compile, you may be missing a feature flag — add the granular feature, not the `default`/`2d`/`ui` bundles. `bevy_picking`/`sprite_picking` are kept because the targeting indicator relies on them.
+- **Bevy features are hand-picked** in `Cargo.toml` with `default-features = false` to keep the wasm bundle and compile times small (no 3D/PBR/glTF/audio). If a new Bevy API fails to compile, you may be missing a feature flag — add the granular feature, not the `default`/`2d`/`ui` bundles. `bevy_picking`/`sprite_picking` are kept because the targeting indicator relies on them. **`bevy_scene` is enabled** (in both the shared and the wasm-target feature blocks) for the `bsn!` macro — see "UI via `bsn!`" below.
 - **wasm build** uses the WebGL2 backend, routes RNG through `crypto.getRandomValues` (`getrandom` `wasm_js` feature + the `getrandom_backend` cfg in `.cargo/config.toml`), and ships via the size-optimized `wasm-release` profile. In `.cargo/config.toml` the *fast-build linker* directives are commented out (so the file is inert for native Linux/macOS builds); the only live directive is the wasm-target `getrandom_backend="wasm_js"` cfg, which fires only when building for `wasm32-unknown-unknown`.
 - **Pure functions for headless tests** — encounter rolls, input→direction mapping, the damage formula, and seed parsing are all pure so the integration tests in `tests/` assert gameplay without a renderer or input device. Follow this when adding logic: extract the decision into a pure fn the system calls.
 

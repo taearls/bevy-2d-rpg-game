@@ -33,13 +33,18 @@ const LOG_PANEL_BOTTOM_OFFSET: f32 = 80.0;
 /// The container that holds the battle-log lines (the Godot
 /// `_battleMessageContainer`). Spawned hidden alongside the action menu; shown
 /// while the log is active.
-#[derive(Component, Debug)]
+///
+/// `Default + Clone` so the `bsn!` macro can treat it as a `Template` (markers
+/// auto-derive `FromTemplate` from those two).
+#[derive(Component, Debug, Default, Clone)]
 pub struct BattleLogContainer;
 
 /// The full-width wrapper that centres the log box. Carries the `Visibility`
 /// that [`swap_panel_for_phase`] toggles; because Bevy visibility inherits, the
 /// styled [`BattleLogContainer`] child shows/hides along with it.
-#[derive(Component, Debug)]
+///
+/// `Default + Clone` so the `bsn!` macro can treat it as a `Template`.
+#[derive(Component, Debug, Default, Clone)]
 pub struct BattleLogPanel;
 
 /// Format a log line for display. A standalone helper so the (currently
@@ -59,39 +64,40 @@ pub fn format_log_line(text: &str) -> String {
 pub fn spawn_battle_log(mut commands: Commands) {
     // A full-width, bottom-anchored wrapper that horizontally centres the log
     // box, mirroring the action-menu panel it swaps in for so the two occupy the
-    // same on-screen slot.
-    commands
-        .spawn((
-            BattleLogPanel,
-            Node {
-                position_type: PositionType::Absolute,
-                bottom: Val::Px(LOG_PANEL_BOTTOM_OFFSET),
-                left: Val::Px(0.0),
-                width: Val::Percent(100.0),
-                justify_content: JustifyContent::Center,
-                ..default()
-            },
-            // Draw the log box in front of the info pane it overlaps.
-            ZIndex(1),
-            // Hidden until the enemy turn / battle end shows the log.
-            Visibility::Hidden,
-            DespawnOnExit(GameState::InBattle),
-        ))
-        .with_children(|wrapper| {
-            wrapper.spawn((
-                BattleLogContainer,
+    // same on-screen slot. Authored as a `bsn!` scene: the wrapper carries the
+    // marker + visibility, and the styled `BattleLogContainer` is its sole child.
+    //
+    // `template_value(...)` wraps components built via a constructor (no plain
+    // struct/tuple form the macro can parse) — here the `BorderColor::all` helper.
+    commands.spawn_scene(bsn! {
+        BattleLogPanel
+        Node {
+            position_type: PositionType::Absolute,
+            bottom: Val::Px(LOG_PANEL_BOTTOM_OFFSET),
+            left: Val::Px(0.0),
+            width: Val::Percent(100.0),
+            justify_content: JustifyContent::Center,
+        }
+        // Draw the log box in front of the info pane it overlaps.
+        ZIndex(1)
+        // Hidden until the enemy turn / battle end shows the log.
+        Visibility::Hidden
+        template_value(DespawnOnExit(GameState::InBattle))
+        Children [
+            (
+                BattleLogContainer
                 Node {
                     flex_direction: FlexDirection::Column,
                     row_gap: Val::Px(2.0),
-                    padding: UiRect::axes(Val::Px(16.0), Val::Px(12.0)),
-                    border: UiRect::all(Val::Px(2.0)),
-                    border_radius: BorderRadius::all(Val::Px(4.0)),
-                    ..default()
-                },
-                BackgroundColor(LOG_PANEL_BG_COLOR),
-                BorderColor::all(LOG_PANEL_BORDER_COLOR),
-            ));
-        });
+                    padding: {UiRect::axes(Val::Px(16.0), Val::Px(12.0))},
+                    border: {UiRect::all(Val::Px(2.0))},
+                    border_radius: {BorderRadius::all(Val::Px(4.0))},
+                }
+                BackgroundColor({LOG_PANEL_BG_COLOR})
+                template_value(BorderColor::all(LOG_PANEL_BORDER_COLOR))
+            )
+        ]
+    });
 }
 
 /// `BattleSet::Ui`: drain pending [`LogMessage`]s into `Text` children of the log

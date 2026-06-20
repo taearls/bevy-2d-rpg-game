@@ -20,7 +20,10 @@ use super::naming::suffix_duplicate_names;
 use super::rng::{DamageRng, SpawnRng};
 use super::seed::read_seed_file;
 use super::targeting::{SelectionIndicator, on_enemy_clicked};
-use super::ui::hud::spawn_enemy_health_bar;
+use super::ui::hud::{
+    ENEMY_BAR_SIZE, ENEMY_BAR_Y, ENEMY_HP_FILL_COLOR, ENEMY_HP_TRACK_COLOR, ENEMY_LABEL_COLOR,
+    ENEMY_LABEL_FONT_SIZE, ENEMY_LABEL_Y, EnemyNameLabel,
+};
 
 /// Maximum number of enemies a battle can spawn. The count is rolled inclusively
 /// in `1..=MAX_ENEMIES`, matching Godot `RandiRange(1, MaxEnemies)`.
@@ -236,31 +239,61 @@ pub fn spawn_enemies(
     entries: &[RosterEntry],
 ) {
     for (index, entry) in entries.iter().enumerate() {
-        let enemy = commands
-            .spawn((
-                Enemy { index },
-                Sprite::from_image(asset_server.load(entry.def.sprite.clone())),
-                Transform::from_translation(layout.enemy_position(index).extend(0.0)),
-                DisplayName(entry.display_name.clone()),
-                Health::full(entry.def.stats.max_health),
-                CombatStats {
-                    attack: entry.def.stats.attack,
-                    defense: entry.def.stats.defense,
-                },
-                DamageVariance::default(),
-                // Clickable for mouse targeting; the observer turns a click into
-                // a select-and-confirm during the `Targeting` phase.
-                Pickable::default(),
-                DespawnOnExit(GameState::InBattle),
-            ))
-            .observe(on_enemy_clicked)
-            .id();
-        // The world-space name label + mini HP bar ride above the sprite, the bar
-        // scaled by the enemy's health fraction by `sync_enemy_health_bars`.
+        let sprite = asset_server.load(entry.def.sprite.clone());
+        let position = layout.enemy_position(index).extend(0.0);
         let name = entry.display_name.clone();
-        commands
-            .entity(enemy)
-            .with_children(|parent| spawn_enemy_health_bar(parent, enemy, &name));
+        let stats = entry.def.stats;
+        // The enemy + its world-space overlay authored as one `bsn!` scene. The
+        // `#enemy` self-reference lets the HP-bar children carry the enemy's own
+        // `Entity` in their `EnemyNameLabel` / `EnemyHealthBar` markers —
+        // replacing the old `spawn().id()` then `with_children` two-step. The
+        // click observer turns a click into a select-and-confirm during the
+        // `Targeting` phase.
+        commands.spawn_scene(bsn! {
+            #enemy
+            Enemy { index: {index} }
+            Sprite { image: {sprite} }
+            template_value(Transform::from_translation(position))
+            DisplayName({name.clone()})
+            // `Health::full(max)` is `{ current: max, max }`; written in struct
+            // form because `Health` is not `Default`, so it has no plain
+            // `Template` for `template_value` — but it derives `FromTemplate`.
+            Health { current: {stats.max_health}, max: {stats.max_health} }
+            CombatStats { attack: {stats.attack}, defense: {stats.defense} }
+            DamageVariance
+            // Clickable for mouse targeting.
+            Pickable
+            template_value(DespawnOnExit(GameState::InBattle))
+            on(on_enemy_clicked)
+            // World-space overlay, stacked name → bar → sprite. The children
+            // reference the enemy via `#enemy` (in scope here), so their
+            // `EnemyNameLabel` / `EnemyHealthBar` markers carry the enemy's own
+            // entity for the targeting highlight, death despawn, and HP scaling.
+            Children [
+                // Name label, floating above the HP bar.
+                (
+                    EnemyNameLabel(#enemy)
+                    Text2d({name})
+                    TextFont { font_size: {FontSize::Px(ENEMY_LABEL_FONT_SIZE)} }
+                    TextColor({ENEMY_LABEL_COLOR})
+                    template_value(Transform::from_xyz(0.0, ENEMY_LABEL_Y, 0.7))
+                ),
+                // Dark track behind the fill. `Sprite` derives `FromTemplate`, so
+                // it is written in struct form (`from_color` = colour +
+                // `custom_size`) rather than via `template_value`.
+                (
+                    Sprite { color: {ENEMY_HP_TRACK_COLOR}, custom_size: {Some(ENEMY_BAR_SIZE)} }
+                    template_value(Transform::from_xyz(0.0, ENEMY_BAR_Y, 0.5))
+                ),
+                // Red fill, full width at spawn (full health); scaled down by
+                // `sync_enemy_health_bars` as the enemy takes damage.
+                (
+                    EnemyHealthBar { owner: #enemy }
+                    Sprite { color: {ENEMY_HP_FILL_COLOR}, custom_size: {Some(ENEMY_BAR_SIZE)} }
+                    template_value(Transform::from_xyz(0.0, ENEMY_BAR_Y, 0.6))
+                )
+            ]
+        });
     }
 }
 

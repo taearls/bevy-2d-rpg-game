@@ -62,15 +62,16 @@ pub struct GameOverSelection {
 }
 
 /// Root container of the game-over UI, despawned wholesale on leaving the screen.
-#[derive(Component, Debug)]
+/// `Default + Clone` lets the `bsn!` macro treat the marker as a `Template`.
+#[derive(Component, Debug, Default, Clone)]
 pub struct GameOverRoot;
 
 /// The yellow `>` cursor child of a row; visible only on the highlighted row.
-#[derive(Component, Debug, Clone, Copy)]
+#[derive(Component, Debug, Clone, Copy, FromTemplate)]
 pub struct GameOverCursor(pub usize);
 
 /// The option-name `Text` of a row, recoloured on highlight.
-#[derive(Component, Debug, Clone, Copy)]
+#[derive(Component, Debug, Clone, Copy, FromTemplate)]
 pub struct GameOverLabel(pub usize);
 
 /// Wires the game-over screen: spawns it on entering [`GameState::GameOver`] and
@@ -91,66 +92,67 @@ pub(crate) fn plugin(app: &mut App) {
 pub fn spawn_game_over(mut commands: Commands, mut selection: ResMut<GameOverSelection>) {
     selection.highlighted = Some(0);
 
-    commands
-        .spawn((
-            GameOverRoot,
-            Node {
-                position_type: PositionType::Absolute,
-                width: Val::Percent(100.0),
-                height: Val::Percent(100.0),
-                flex_direction: FlexDirection::Column,
-                justify_content: JustifyContent::Center,
-                align_items: AlignItems::Center,
-                row_gap: Val::Px(12.0),
-                ..default()
-            },
-            DespawnOnExit(GameState::GameOver),
-        ))
-        .with_children(|root| {
-            root.spawn((
-                Text::new("Game Over"),
-                TextFont {
-                    font_size: FontSize::Px(TITLE_FONT_SIZE),
-                    ..default()
-                },
-                TextColor(TITLE_COLOR),
-                Node {
-                    margin: UiRect::bottom(Val::Px(32.0)),
-                    ..default()
-                },
-            ));
+    // A centred column: the red "Game Over" title above the two option rows. The
+    // rows are index-parametrized, so they are built as a `Vec<impl Scene>` (a
+    // `SceneList`) and spliced into the root's `Children` after the title.
+    let rows: Vec<_> = GameOverOption::ALL
+        .iter()
+        .enumerate()
+        .map(|(index, option)| menu_row(index, option.label()))
+        .collect();
+    commands.spawn_scene(bsn! {
+        GameOverRoot
+        Node {
+            position_type: PositionType::Absolute,
+            width: Val::Percent(100.0),
+            height: Val::Percent(100.0),
+            flex_direction: FlexDirection::Column,
+            justify_content: JustifyContent::Center,
+            align_items: AlignItems::Center,
+            row_gap: Val::Px(12.0),
+        }
+        template_value(DespawnOnExit(GameState::GameOver))
+        Children [
+            (
+                Text("Game Over")
+                TextFont { font_size: {FontSize::Px(TITLE_FONT_SIZE)} }
+                TextColor({TITLE_COLOR})
+                Node { margin: {UiRect::bottom(Val::Px(32.0))} }
+            ),
+            {rows}
+        ]
+    });
+}
 
-            for (index, option) in GameOverOption::ALL.iter().enumerate() {
-                root.spawn(Node {
-                    flex_direction: FlexDirection::Row,
-                    column_gap: Val::Px(8.0),
-                    ..default()
-                })
-                .with_children(|row| {
-                    row.spawn((
-                        GameOverCursor(index),
-                        Text::new(CURSOR_TEXT),
-                        TextFont {
-                            font_size: FontSize::Px(OPTION_FONT_SIZE),
-                            ..default()
-                        },
-                        TextColor(HIGHLIGHT_COLOR),
-                        // Hidden until `update_game_over_highlight` reveals the
-                        // cursor on the highlighted row.
-                        Visibility::Hidden,
-                    ));
-                    row.spawn((
-                        GameOverLabel(index),
-                        Text::new(option.label()),
-                        TextFont {
-                            font_size: FontSize::Px(OPTION_FONT_SIZE),
-                            ..default()
-                        },
-                        TextColor(DEFAULT_COLOR),
-                    ));
-                });
-            }
-        });
+/// One game-over row scene: a flex row holding the (initially hidden) yellow `>`
+/// cursor and the option label, both tagged with `index` for
+/// [`update_game_over_highlight`]. Returns an `impl Scene` so the rows can be
+/// collected into a `SceneList` and spliced into the root column.
+fn menu_row(index: usize, label: &str) -> impl Scene {
+    let label = label.to_string();
+    bsn! {
+        Node {
+            flex_direction: FlexDirection::Row,
+            column_gap: Val::Px(8.0),
+        }
+        Children [
+            (
+                GameOverCursor({index})
+                Text({CURSOR_TEXT})
+                TextFont { font_size: {FontSize::Px(OPTION_FONT_SIZE)} }
+                TextColor({HIGHLIGHT_COLOR})
+                // Hidden until `update_game_over_highlight` reveals the cursor on
+                // the highlighted row.
+                Visibility::Hidden
+            ),
+            (
+                GameOverLabel({index})
+                Text({label})
+                TextFont { font_size: {FontSize::Px(OPTION_FONT_SIZE)} }
+                TextColor({DEFAULT_COLOR})
+            )
+        ]
+    }
 }
 
 /// Keyboard navigation, gated to the game-over screen. Up/Down cycle the

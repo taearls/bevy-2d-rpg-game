@@ -74,19 +74,21 @@ pub struct MenuSelection {
 }
 
 /// Root container of the action menu (the Godot `ActionMenu` `VBoxContainer`).
-#[derive(Component, Debug)]
+/// `Default + Clone` lets the `bsn!` macro treat the marker as a `Template`.
+#[derive(Component, Debug, Default, Clone)]
 pub struct ActionMenuPanel;
 
-/// One selectable row, tagged with its action index.
-#[derive(Component, Debug, Clone, Copy)]
+/// One selectable row, tagged with its action index. `FromTemplate` lets it be
+/// written as `MenuRow({index})` in a `bsn!` scene.
+#[derive(Component, Debug, Clone, Copy, FromTemplate)]
 pub struct MenuRow(pub usize);
 
 /// The yellow `>` cursor child of a row; visible only on the highlighted row.
-#[derive(Component, Debug, Clone, Copy)]
+#[derive(Component, Debug, Clone, Copy, FromTemplate)]
 pub struct MenuCursor(pub usize);
 
 /// The action-name `Text` child of a row, recoloured on highlight.
-#[derive(Component, Debug, Clone, Copy)]
+#[derive(Component, Debug, Clone, Copy, FromTemplate)]
 pub struct MenuLabel(pub usize);
 
 /// Direction the highlight moves when cycling: [`Down`](Self::Down) advances to
@@ -257,66 +259,74 @@ pub fn spawn_action_menu(mut commands: Commands) {
     // box — the Bevy equivalent of the Godot `ActionMenuPanel` `anchor 0.5`
     // centring. The wrapper takes no space visually (no background); the
     // `ActionMenuPanel` child is the styled box that floats above the info pane.
-    commands
-        .spawn((
-            Node {
-                position_type: PositionType::Absolute,
-                bottom: Val::Px(PANEL_BOTTOM_OFFSET),
-                left: Val::Px(0.0),
-                width: Val::Percent(100.0),
-                justify_content: JustifyContent::Center,
-                ..default()
-            },
-            // Draw the menu box in front of the info pane it overlaps.
-            ZIndex(1),
-            DespawnOnExit(GameState::InBattle),
-        ))
-        .with_children(|wrapper| {
-            wrapper
-                .spawn((
-                    ActionMenuPanel,
-                    Node {
-                        flex_direction: FlexDirection::Column,
-                        row_gap: Val::Px(4.0),
-                        // The Godot `action_menu_panel` content margins (16/12)
-                        // and 2px border.
-                        padding: UiRect::axes(Val::Px(16.0), Val::Px(12.0)),
-                        border: UiRect::all(Val::Px(2.0)),
-                        border_radius: BorderRadius::all(Val::Px(4.0)),
-                        ..default()
-                    },
-                    BackgroundColor(PANEL_BG_COLOR),
-                    BorderColor::all(PANEL_BORDER_COLOR),
-                ))
-                .with_children(|panel| {
-                    for (index, action) in MenuAction::ALL.iter().enumerate() {
-                        panel
-                            .spawn((
-                                MenuRow(index),
-                                Node {
-                                    flex_direction: FlexDirection::Row,
-                                    column_gap: Val::Px(8.0),
-                                    ..default()
-                                },
-                            ))
-                            .with_children(|row| {
-                                row.spawn((
-                                    MenuCursor(index),
-                                    Text::new(CURSOR_TEXT),
-                                    TextColor(HIGHLIGHT_COLOR),
-                                    // Hidden until `update_menu_highlight` reveals the
-                                    // cursor on the highlighted row.
-                                    Visibility::Hidden,
-                                ));
-                                row.spawn((
-                                    MenuLabel(index),
-                                    Text::new(action.label()),
-                                    TextColor(DEFAULT_COLOR),
-                                ));
-                            });
-                    }
-                });
-        });
+    //
+    // The rows are index-parametrized, so they are built as a `Vec<impl Scene>`
+    // (which is a `SceneList`) outside the macro and spliced into the panel's
+    // `Children` with `{rows}` — `bsn!` has no loop syntax of its own.
+    let rows: Vec<_> = MenuAction::ALL
+        .iter()
+        .enumerate()
+        .map(|(index, action)| menu_row(index, action.label()))
+        .collect();
+    commands.spawn_scene(bsn! {
+        Node {
+            position_type: PositionType::Absolute,
+            bottom: Val::Px(PANEL_BOTTOM_OFFSET),
+            left: Val::Px(0.0),
+            width: Val::Percent(100.0),
+            justify_content: JustifyContent::Center,
+        }
+        // Draw the menu box in front of the info pane it overlaps.
+        ZIndex(1)
+        template_value(DespawnOnExit(GameState::InBattle))
+        Children [
+            (
+                ActionMenuPanel
+                Node {
+                    flex_direction: FlexDirection::Column,
+                    row_gap: Val::Px(4.0),
+                    // The Godot `action_menu_panel` content margins (16/12)
+                    // and 2px border.
+                    padding: {UiRect::axes(Val::Px(16.0), Val::Px(12.0))},
+                    border: {UiRect::all(Val::Px(2.0))},
+                    border_radius: {BorderRadius::all(Val::Px(4.0))},
+                }
+                BackgroundColor({PANEL_BG_COLOR})
+                template_value(BorderColor::all(PANEL_BORDER_COLOR))
+                Children [ {rows} ]
+            )
+        ]
+    });
+}
+
+/// One action-menu row scene: a flex row holding the (initially hidden) yellow
+/// `>` cursor and the action label, both tagged with `index` so
+/// [`update_menu_highlight`] can address them. Returns an `impl Scene` so the
+/// rows can be collected into a `SceneList` and spliced into the panel.
+fn menu_row(index: usize, label: &str) -> impl Scene {
+    let label = label.to_string();
+    bsn! {
+        MenuRow({index})
+        Node {
+            flex_direction: FlexDirection::Row,
+            column_gap: Val::Px(8.0),
+        }
+        Children [
+            (
+                MenuCursor({index})
+                Text({CURSOR_TEXT})
+                TextColor({HIGHLIGHT_COLOR})
+                // Hidden until `update_menu_highlight` reveals the cursor on the
+                // highlighted row.
+                Visibility::Hidden
+            ),
+            (
+                MenuLabel({index})
+                Text({label})
+                TextColor({DEFAULT_COLOR})
+            )
+        ]
+    }
 }
 
 #[cfg(test)]

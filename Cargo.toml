@@ -11,9 +11,15 @@ path = "src/lib.rs"
 
 # Bevy with default features OFF, composed from the granular building blocks a
 # 2D game actually uses. This skips the `default`/`2d`/`ui` bundle features,
-# which hard-pull the entire 3D/PBR/glTF stack plus `bevy_audio`, `bevy_scene`,
-# `bevy_gilrs`, and `sysinfo_plugin` — none of which this game uses. Dropping
-# them shrinks the wasm bundle and cuts compile time.
+# which hard-pull the entire 3D/PBR/glTF stack plus `bevy_audio`, `bevy_gilrs`,
+# and `sysinfo_plugin` — none of which this game uses. Dropping them shrinks the
+# wasm bundle and cuts compile time.
+#
+# `bevy_scene` *is* pulled in deliberately: the UI/menu hierarchies are authored
+# with the Bevy 0.19 `bsn!` macro + `commands.spawn_scene(...)`, which live in
+# that crate. It carries the runtime scene/template machinery (not a first-party
+# `.bsn` asset loader, which 0.19 doesn't ship yet), accepted as the cost of the
+# declarative scene syntax over nested `.with_children(...)` closures.
 #
 # Render stack mirrors what the `2d` bundle expands to (sprite + UI render,
 # core pipeline, post-process) minus the unused bits. `bevy_picking` is kept:
@@ -31,6 +37,9 @@ features = [
     "bevy_state",
     "bevy_window",
     "bevy_winit",
+    # Scenes + the `bsn!` macro: the UI/menu hierarchies are spawned via
+    # `commands.spawn_scene(bsn! { ... })` instead of nested `with_children`.
+    "bevy_scene",
     "custom_cursor",
     "reflect_auto_register",
     "async_executor",
@@ -80,7 +89,10 @@ thiserror = "2"
 #   browser's `crypto.getRandomValues`; it must be paired with the
 #   `getrandom_backend="wasm_js"` cfg set in `.cargo/config.toml`.
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-bevy = { version = "0.19", default-features = false, features = ["webgl2"] }
+# `bevy_scene` is repeated here (not just in the shared list) because this
+# target table replaces the feature set rather than extending it; the web build
+# needs it for the `bsn!`-spawned UI just as the native build does.
+bevy = { version = "0.19", default-features = false, features = ["webgl2", "bevy_scene"] }
 getrandom = { version = "0.3", features = ["wasm_js"] }
 
 [features]

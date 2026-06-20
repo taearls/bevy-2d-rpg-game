@@ -12,6 +12,7 @@
 //! without it `init_state` / `OnEnter` transitions never run.
 
 use bevy::prelude::*;
+use bevy::scene::ScenePlugin;
 use bevy::state::app::StatesPlugin;
 
 use bevy_2d_rpg_game::battle::menu::{
@@ -27,8 +28,8 @@ use bevy_2d_rpg_game::components::{
 use bevy_2d_rpg_game::battle::menu::{menu_input, on_enter_player_turn, update_menu_highlight};
 
 /// Build a headless battle app with the turn state, action menu, and a player
-/// entity named `player_name`. No renderer or asset loading — the menu UI is
-/// plain `Node`/`Text` entities the systems mutate in place.
+/// entity named `player_name`. No renderer — the menu UI is a `bsn!` scene of
+/// `Node`/`Text` entities the systems then mutate in place.
 fn menu_app(player_name: &str) -> App {
     let mut app = App::new();
     // `StatesPlugin` is not part of `MinimalPlugins` and is required for
@@ -38,32 +39,39 @@ fn menu_app(player_name: &str) -> App {
     // wipe a manually-pressed key before `menu_input` (in `Update`) reads it.
     // Inserting the resource directly and managing it in `press` keeps the
     // simulated press alive for the frame the system runs.
-    app.add_plugins((MinimalPlugins, StatesPlugin))
-        .init_resource::<ButtonInput<KeyCode>>()
-        .init_resource::<MenuSelection>()
-        .init_state::<TurnPhase>()
-        .add_message::<LogMessage>()
-        .configure_sets(
-            Update,
-            (
-                BattleSet::Input,
-                BattleSet::Resolve,
-                BattleSet::Cleanup,
-                BattleSet::Ui,
-            )
-                .chain(),
+    // `AssetPlugin` + `ScenePlugin` back the `bsn!` + `spawn_scene` the action
+    // menu is now built with (provided by `DefaultPlugins` in the real binary).
+    app.add_plugins((
+        MinimalPlugins,
+        AssetPlugin::default(),
+        ScenePlugin,
+        StatesPlugin,
+    ))
+    .init_resource::<ButtonInput<KeyCode>>()
+    .init_resource::<MenuSelection>()
+    .init_state::<TurnPhase>()
+    .add_message::<LogMessage>()
+    .configure_sets(
+        Update,
+        (
+            BattleSet::Input,
+            BattleSet::Resolve,
+            BattleSet::Cleanup,
+            BattleSet::Ui,
         )
-        .add_systems(Startup, spawn_action_menu)
-        .add_systems(OnEnter(TurnPhase::PlayerTurn), on_enter_player_turn)
-        .add_systems(
-            Update,
-            (
-                menu_input
-                    .in_set(BattleSet::Input)
-                    .run_if(in_state(TurnPhase::PlayerTurn)),
-                update_menu_highlight.in_set(BattleSet::Ui),
-            ),
-        );
+            .chain(),
+    )
+    .add_systems(Startup, spawn_action_menu)
+    .add_systems(OnEnter(TurnPhase::PlayerTurn), on_enter_player_turn)
+    .add_systems(
+        Update,
+        (
+            menu_input
+                .in_set(BattleSet::Input)
+                .run_if(in_state(TurnPhase::PlayerTurn)),
+            update_menu_highlight.in_set(BattleSet::Ui),
+        ),
+    );
 
     app.world_mut().spawn((
         Player,

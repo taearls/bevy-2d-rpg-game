@@ -12,6 +12,7 @@
 //! frame the `Update` systems read it.
 
 use bevy::prelude::*;
+use bevy::scene::ScenePlugin;
 use bevy::state::app::StatesPlugin;
 
 use bevy_2d_rpg_game::main_menu::{
@@ -26,17 +27,24 @@ use bevy_2d_rpg_game::state::GameState;
 /// highlights row 0.
 fn menu_app() -> App {
     let mut app = App::new();
-    app.add_plugins((MinimalPlugins, StatesPlugin))
-        .init_resource::<ButtonInput<KeyCode>>()
-        .init_resource::<MainMenuSelection>()
-        .init_resource::<PlayerProgress>()
-        .init_state::<GameState>()
-        .add_systems(OnEnter(GameState::MainMenu), spawn_main_menu)
-        .add_systems(OnExit(GameState::MainMenu), despawn_main_menu)
-        .add_systems(
-            Update,
-            (main_menu_input, update_main_menu_highlight).run_if(in_state(GameState::MainMenu)),
-        );
+    // `AssetPlugin` + `ScenePlugin` back the `bsn!` + `spawn_scene` the menu is
+    // now built with (provided by `DefaultPlugins` in the real binary).
+    app.add_plugins((
+        MinimalPlugins,
+        AssetPlugin::default(),
+        ScenePlugin,
+        StatesPlugin,
+    ))
+    .init_resource::<ButtonInput<KeyCode>>()
+    .init_resource::<MainMenuSelection>()
+    .init_resource::<PlayerProgress>()
+    .init_state::<GameState>()
+    .add_systems(OnEnter(GameState::MainMenu), spawn_main_menu)
+    .add_systems(OnExit(GameState::MainMenu), despawn_main_menu)
+    .add_systems(
+        Update,
+        (main_menu_input, update_main_menu_highlight).run_if(in_state(GameState::MainMenu)),
+    );
 
     app.update();
     app
