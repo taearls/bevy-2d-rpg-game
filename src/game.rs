@@ -31,10 +31,11 @@ impl Plugin for GamePlugin {
                 crate::battle::plugin,
             ));
 
-        // The egui debug inspector (right-click a sprite to inspect it) is
-        // compiled in only under the `debug-inspector` feature, so default/release
-        // builds and headless tests never link egui.
-        #[cfg(feature = "debug-inspector")]
+        // The diagnostics overlay (an F12-toggled FPS / frame-time readout, via
+        // Bevy's official `FpsOverlayPlugin`) is compiled in only under the
+        // `debug-overlay` feature, so default/release builds and headless tests
+        // never pull in `bevy_dev_tools`.
+        #[cfg(feature = "debug-overlay")]
         app.add_plugins(crate::debug::plugin);
     }
 }

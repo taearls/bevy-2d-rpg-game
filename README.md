@@ -26,7 +26,7 @@ or "Return to Title Screen".
 
 ```sh
 just run            # launch the game window
-just run-debug      # egui debug inspector — temporarily disabled (see note below)
+just run-debug      # launch with the F12-toggled FPS / frame-time overlay
 just run-fast       # launch with Bevy dynamic linking (fastest iterative builds)
 ```
 
@@ -106,25 +106,20 @@ This repo applies Bevy's [recommended build optimizations](https://bevy.org/lear
   parallel-frontend / `no-embed-metadata` flags a one-line change. The only live
   directive is `rust-lld` for the `x86_64-pc-windows-msvc` target.
 
-> **Temporarily disabled during the Bevy 0.19 migration.** `bevy-inspector-egui`
-> has no Bevy 0.19-compatible release yet (it targets 0.18 on both crates.io and
-> git `main`), so the `debug-inspector` feature and its dependency are commented
-> out in `Cargo.toml` and `just run-debug` is a no-op. The inspector code and its
-> `#[cfg(feature = "debug-inspector")]` gates are left in place so the feature can
-> be restored in one step once a compatible release ships. The rest of this
-> section describes the inspector as it will work again when re-enabled.
+### Diagnostics overlay
 
-`just run-debug` builds with the `debug-inspector` feature. **Right-click any
-sprite** (or Control+left-click on a trackpad) to open a focused
-[`bevy-inspector-egui`](https://github.com/jakobhellermann/bevy-inspector-egui)
-panel showing just that entity's components, editable live — `BattleLayout`
-(enemy spacing/position), `UiConfig` (panel widths), and per-entity `Health` /
-`CombatStats` / `DamageVariance`, replacing the original's `[Export(Range)]`
-tuning. The panel is sticky (it follows the last-clicked entity until you click
-another); dismiss it with **Esc** or the window's **×**. An **Enemies** list
-window lets you pick a target without hunting for its sprite, and right-clicking
-a component jumps to the source line where it last changed. The feature is
-compiled out of `just run` and all tests, so egui never ships in a normal build.
+`just run-debug` (or `cargo run --features debug-overlay`) launches with Bevy's
+**official** [`FpsOverlayPlugin`](https://docs.rs/bevy/latest/bevy/dev_tools/fps_overlay/struct.FpsOverlayPlugin.html)
+(from `bevy_dev_tools`): an on-screen FPS counter — plus a frame-time graph on
+the native/WebGPU renderer — in the top-left corner. Press **F12** to toggle it
+on and off.
+
+This replaces the earlier `bevy-inspector-egui` community inspector, which had
+no Bevy 0.19-compatible release; the official overlay ships inside Bevy, so the
+third-party egui dependency is gone. The overlay lives behind the
+`debug-overlay` cargo feature, so it is compiled out of `just run`, the release
+binary, the wasm bundle, and all tests — `bevy_dev_tools` never ships in a
+normal build.
 
 ## Development
 

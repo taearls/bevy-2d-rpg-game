@@ -74,11 +74,6 @@ rand_chacha = "0.9"
 serde = { version = "1", features = ["derive"] }
 ron = "0.12"
 thiserror = "2"
-# TODO(bevy 0.19): bevy-inspector-egui has no Bevy 0.19-compatible release yet
-# (it targets 0.18 on both crates.io and git main as of this migration), so the
-# `debug-inspector` feature is disabled below. Re-enable both once a compatible
-# version ships.
-# bevy-inspector-egui = { version = "0.36", optional = true }
 
 # WebAssembly-only Bevy features. On `wasm32-unknown-unknown`:
 # * The `webgl2` renderer backend gives broad browser support (WebGPU is not
@@ -96,13 +91,13 @@ bevy = { version = "0.19", default-features = false, features = ["webgl2", "bevy
 getrandom = { version = "0.3", features = ["wasm_js"] }
 
 [features]
-# `bevy/track_location` records the source location of the last change to each
-# component, which the inspector surfaces as a right-click "jump to code" on a
-# component. Scoped to this debug-only feature so release/test builds don't pay
-# the tracking cost.
-# TODO(bevy 0.19): re-enable once bevy-inspector-egui supports Bevy 0.19 (see the
-# commented-out dependency above).
-# debug-inspector = ["dep:bevy-inspector-egui", "bevy/track_location"]
+# The on-screen diagnostics overlay (Bevy's official `FpsOverlayPlugin` from
+# `bevy_dev_tools`): an FPS / frame-time readout, toggled in-game with F12 — see
+# `src/debug/mod.rs`. Scoped behind a cargo feature so the default `cargo build`
+# and the size-optimized wasm bundle don't pull in `bevy_dev_tools` and its
+# frame-time-graph material/shader. Enable with `cargo run --features
+# debug-overlay` (or `just run-debug`).
+debug-overlay = ["bevy/bevy_dev_tools"]
 # Dynamic linking gives the fastest iterative dev builds (Bevy's most impactful
 # compile-time optimization). Opt in with `cargo run --features dynamic_linking`
 # (or `just run-fast`). Never ship release builds with this enabled.
@@ -118,14 +113,6 @@ debug = 1
 # Enable a large amount of optimization in the dev profile for dependencies.
 [profile.dev.package."*"]
 opt-level = 3
-
-[lints.rust]
-# The `debug-inspector` feature is temporarily commented out (see the dependency
-# section) because bevy-inspector-egui has no Bevy 0.19 release yet. The
-# `#[cfg(feature = "debug-inspector")]` gates in the source stay in place so the
-# feature can be restored in one step; declare the cfg here so they don't warn as
-# "unexpected" while the feature is disabled.
-unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("debug-inspector"))'] }
 
 # Size-optimized profile for the WebAssembly bundle, kept separate from the
 # native `release` profile (which stays at opt-level 3 for runtime speed). The

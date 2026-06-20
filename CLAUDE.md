@@ -24,7 +24,7 @@ just format         # cargo fmt
 
 Gate every change on `just ci` locally and rely on its **exit code** (see "CI" below). To run a single test: `cargo test <name>` (e.g. `cargo test --test battle_flow`, or `cargo test compute_damage`).
 
-`just run-debug` is intentionally a **no-op that exits 1**: the egui debug inspector (`debug-inspector` feature + `bevy-inspector-egui`) is disabled until that crate ships a Bevy 0.19 release. The `#[cfg(feature = "debug-inspector")]` gates throughout the source are kept in place so the feature restores in one step — leave them as-is.
+`just run-debug` launches with the **diagnostics overlay**: Bevy's official `FpsOverlayPlugin` (from `bevy_dev_tools`), an FPS / frame-time readout toggled in-game with F12, gated behind the `debug-overlay` cargo feature (`src/debug/mod.rs`). It replaced the earlier `bevy-inspector-egui` community inspector, which had no Bevy 0.19 release — the egui dependency is gone. The plugin is a no-op without a `RenderApp` (so headless `--features debug-overlay` tests stay green); the whole module is `#[cfg(feature = "debug-overlay")]` so default/release/wasm builds and tests never link `bevy_dev_tools`.
 
 ### Deterministic spawns
 

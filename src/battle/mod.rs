@@ -19,6 +19,8 @@ use bevy::sprite::{SpritePickingMode, SpritePickingSettings};
 use crate::combat::events::{AttackRequested, DamageDealt};
 use crate::combat::resolve::{apply_attacks, check_battle_end, on_died_hide_sprite};
 use crate::components::{CombatStats, DamageVariance, Health, Player};
+use crate::progress::PlayerProgress;
+use crate::state::GameState;
 use enemy_turn::{EnemyTurnQueue, on_enter_enemy_turn, tick_enemy_turn};
 use menu::{
     LogView, MenuSelection, close_log_view_on_player_turn, log_overlay_input, menu_input,
@@ -30,13 +32,6 @@ use state::{BattleResult, BattleSet, TurnPhase};
 use targeting::{
     SelectedTarget, on_enter_targeting, on_exit_targeting, targeting_input, update_target_visuals,
 };
-// Marker / label components — only registered for reflection under the debug
-// inspector, so their import is gated to the same feature to keep a default
-// build free of unused-import warnings.
-#[cfg(feature = "debug-inspector")]
-use crate::components::{Defending, DisplayName, Enemy, EnemyHealthBar, Targeted};
-use crate::progress::PlayerProgress;
-use crate::state::GameState;
 
 /// Drives battle setup and turn flow: seeds the spawn RNG, loads the character
 /// roster, spawns the player + enemy lineup once the templates finish loading,
@@ -45,11 +40,9 @@ use crate::state::GameState;
 pub(crate) fn plugin(app: &mut App) {
     app.add_plugins(ui::plugin)
         // Register the former Godot `[Export(Range)]` tuning knobs for
-        // reflection so the Phase 8 inspector can edit them live. Registered
-        // here in the plugin that wires these types into the battle (the
-        // `UiConfig` knob is registered alongside in `ui::plugin`).
-        // These tuning-knob types stay feature-independent; the inspector-only
-        // marker components are gated to `debug-inspector` below.
+        // reflection (the `UiConfig` knob is registered alongside in
+        // `ui::plugin`). Kept feature-independent so the types stay reflectable
+        // for any tooling, independent of the optional diagnostics overlay.
         .register_type::<BattleLayout>()
         .register_type::<Health>()
         .register_type::<CombatStats>()
@@ -150,18 +143,6 @@ pub(crate) fn plugin(app: &mut App) {
                 render_log_messages.in_set(BattleSet::Ui),
             ),
         );
-
-    // The marker / label components carry no tuning knobs — they're only
-    // worth reflecting so the debug inspector can expand every component on a
-    // combatant instead of showing them opaque. Gated on the feature so a
-    // release build doesn't register reflection it never reads.
-    #[cfg(feature = "debug-inspector")]
-    app.register_type::<Player>()
-        .register_type::<Enemy>()
-        .register_type::<DisplayName>()
-        .register_type::<Defending>()
-        .register_type::<Targeted>()
-        .register_type::<EnemyHealthBar>();
 }
 
 /// Gate that turns true while no combatants are spawned, so [`spawn_battle`] runs
