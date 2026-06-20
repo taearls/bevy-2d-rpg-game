@@ -15,20 +15,22 @@ pub struct Player;
 /// Marks an enemy combatant and records its slot in the spawned row. `index`
 /// runs `0..enemy_count` left-to-right and drives layout, enemy-turn ordering,
 /// and the Godot `EnemyIndex` parity used by targeting.
-#[derive(Component, Reflect, Debug, Clone, Copy, PartialEq, Eq)]
+///
+/// `FromTemplate` lets it be written as `Enemy { index }` in a `bsn!` scene.
+#[derive(Component, Reflect, Debug, Clone, Copy, PartialEq, Eq, FromTemplate)]
 #[reflect(Component)]
 pub struct Enemy {
     pub index: usize,
 }
 
 /// Human-readable name shown in the HUD and battle log (e.g. `"Goblin A"`).
-#[derive(Component, Reflect, Debug, Clone, PartialEq, Eq)]
+#[derive(Component, Reflect, Debug, Clone, PartialEq, Eq, FromTemplate)]
 #[reflect(Component)]
 pub struct DisplayName(pub String);
 
 /// Current and maximum hit points. `current` is clamped to `0..=max` by the
 /// combat systems; this component itself imposes no invariant on construction.
-#[derive(Component, Reflect, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Component, Reflect, Debug, Clone, Copy, PartialEq, Eq, FromTemplate)]
 #[reflect(Component)]
 pub struct Health {
     pub current: i32,
@@ -71,14 +73,16 @@ pub struct Targeted;
 /// [`Health`] drives the fill, kept on the component so the HUD can scale each
 /// fill against the right entity without walking the parent hierarchy. Mirrors
 /// the Godot per-enemy `ProgressBar` child set up in `BattleCharacter`.
-#[derive(Component, Reflect, Debug, Clone, Copy, PartialEq, Eq)]
+/// `FromTemplate` lets the `bsn!` macro accept an entity reference (`#enemy`) for
+/// the `owner` field when the HP bar is spawned inside the enemy's scene.
+#[derive(Component, Reflect, Debug, Clone, Copy, PartialEq, Eq, FromTemplate)]
 #[reflect(Component)]
 pub struct EnemyHealthBar {
     pub owner: Entity,
 }
 
 /// Offensive and defensive stats feeding the damage formula.
-#[derive(Component, Reflect, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Component, Reflect, Debug, Clone, Copy, PartialEq, Eq, FromTemplate)]
 #[reflect(Component)]
 pub struct CombatStats {
     pub attack: i32,

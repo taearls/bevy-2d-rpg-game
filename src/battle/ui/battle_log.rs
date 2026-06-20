@@ -10,7 +10,7 @@
 
 use bevy::prelude::*;
 
-use crate::battle::menu::ActionMenuPanel;
+use crate::battle::menu::{ActionMenuPanel, LogView};
 use crate::battle::messages::LogMessage;
 use crate::battle::state::TurnPhase;
 use crate::state::GameState;
@@ -19,6 +19,13 @@ use super::{UiConfig, log_showing};
 
 /// Colour of a battle-log line.
 const LOG_TEXT_COLOR: Color = Color::srgb(0.9, 0.9, 0.9);
+/// Dimmer colour for the close hint, so it reads as a footnote, not a log line.
+const LOG_HINT_COLOR: Color = Color::srgb(0.55, 0.55, 0.6);
+/// Smaller font for the close hint than the log lines, reinforcing the footnote
+/// look (log lines use the default ~20 px body size).
+const LOG_HINT_FONT_SIZE: f32 = 12.0;
+/// The close-hint text shown only when the player opened the log via the menu.
+const LOG_HINT_TEXT: &str = "Esc/Enter to close";
 
 /// Background of the log panel — shares the Godot `action_menu_panel` style with
 /// the action menu it swaps in for (`bg_color = (0.12, 0.12, 0.16, 1)`).
@@ -26,21 +33,36 @@ const LOG_PANEL_BG_COLOR: Color = Color::srgb(0.12, 0.12, 0.16);
 /// White 2px border matching the action-menu panel.
 const LOG_PANEL_BORDER_COLOR: Color = Color::WHITE;
 /// How far above the bottom of the screen the log panel sits — matches the
-/// action-menu panel so the two occupy the same slot (overlapping the info pane,
-/// drawn in front) when swapped.
-const LOG_PANEL_BOTTOM_OFFSET: f32 = 80.0;
+/// action-menu panel's [`PANEL_BOTTOM_OFFSET`](crate::battle::menu) (0 px) so the
+/// two occupy the exact same slot (overlapping the info pane, drawn in front)
+/// when swapped.
+const LOG_PANEL_BOTTOM_OFFSET: f32 = 0.0;
 
 /// The container that holds the battle-log lines (the Godot
 /// `_battleMessageContainer`). Spawned hidden alongside the action menu; shown
 /// while the log is active.
-#[derive(Component, Debug)]
+///
+/// `Default + Clone` so the `bsn!` macro can treat it as a `Template` (markers
+/// auto-derive `FromTemplate` from those two).
+#[derive(Component, Debug, Default, Clone)]
 pub struct BattleLogContainer;
 
 /// The full-width wrapper that centres the log box. Carries the `Visibility`
 /// that [`swap_panel_for_phase`] toggles; because Bevy visibility inherits, the
 /// styled [`BattleLogContainer`] child shows/hides along with it.
-#[derive(Component, Debug)]
+///
+/// `Default + Clone` so the `bsn!` macro can treat it as a `Template`.
+#[derive(Component, Debug, Default, Clone)]
 pub struct BattleLogPanel;
+
+/// The "Esc/Enter to close" footnote on the log box. Shown only when the player
+/// opened the log themselves from the menu's `Log` action — not during the
+/// enemy-turn auto-show, where there is nothing to close. Its visibility is
+/// driven by [`toggle_log_hint`] from [`LogView::open`].
+///
+/// `Default + Clone` so the `bsn!` macro can treat it as a `Template`.
+#[derive(Component, Debug, Default, Clone)]
+pub struct LogHint;
 
 /// Format a log line for display. A standalone helper so the (currently
 /// timestamp-free) format has a single home and the log test can assert it
@@ -59,39 +81,55 @@ pub fn format_log_line(text: &str) -> String {
 pub fn spawn_battle_log(mut commands: Commands) {
     // A full-width, bottom-anchored wrapper that horizontally centres the log
     // box, mirroring the action-menu panel it swaps in for so the two occupy the
-    // same on-screen slot.
-    commands
-        .spawn((
-            BattleLogPanel,
-            Node {
-                position_type: PositionType::Absolute,
-                bottom: Val::Px(LOG_PANEL_BOTTOM_OFFSET),
-                left: Val::Px(0.0),
-                width: Val::Percent(100.0),
-                justify_content: JustifyContent::Center,
-                ..default()
-            },
-            // Draw the log box in front of the info pane it overlaps.
-            ZIndex(1),
-            // Hidden until the enemy turn / battle end shows the log.
-            Visibility::Hidden,
-            DespawnOnExit(GameState::InBattle),
-        ))
-        .with_children(|wrapper| {
-            wrapper.spawn((
-                BattleLogContainer,
+    // same on-screen slot. Authored as a `bsn!` scene: the wrapper carries the
+    // marker + visibility, and the styled `BattleLogContainer` is its sole child.
+    //
+    // `template_value(...)` wraps components built via a constructor (no plain
+    // struct/tuple form the macro can parse) — here the `BorderColor::all` helper.
+    commands.spawn_scene(bsn! {
+        BattleLogPanel
+        Node {
+            position_type: PositionType::Absolute,
+            bottom: Val::Px(LOG_PANEL_BOTTOM_OFFSET),
+            left: Val::Px(0.0),
+            width: Val::Percent(100.0),
+            // Centre the box horizontally; stack the log box over its close hint.
+            flex_direction: FlexDirection::Column,
+            justify_content: JustifyContent::Center,
+            align_items: AlignItems::Center,
+            row_gap: Val::Px(4.0),
+        }
+        // Draw the log box in front of the info pane it overlaps.
+        ZIndex(1)
+        // Hidden until the enemy turn / battle end shows the log.
+        Visibility::Hidden
+        template_value(DespawnOnExit(GameState::InBattle))
+        Children [
+            (
+                BattleLogContainer
                 Node {
                     flex_direction: FlexDirection::Column,
                     row_gap: Val::Px(2.0),
-                    padding: UiRect::axes(Val::Px(16.0), Val::Px(12.0)),
-                    border: UiRect::all(Val::Px(2.0)),
-                    border_radius: BorderRadius::all(Val::Px(4.0)),
-                    ..default()
-                },
-                BackgroundColor(LOG_PANEL_BG_COLOR),
-                BorderColor::all(LOG_PANEL_BORDER_COLOR),
-            ));
-        });
+                    padding: {UiRect::axes(Val::Px(16.0), Val::Px(12.0))},
+                    border: {UiRect::all(Val::Px(2.0))},
+                    border_radius: {BorderRadius::all(Val::Px(4.0))},
+                }
+                BackgroundColor({LOG_PANEL_BG_COLOR})
+                template_value(BorderColor::all(LOG_PANEL_BORDER_COLOR))
+            ),
+            // The close hint sits just below the box, hidden until `toggle_log_hint`
+            // reveals it when the player opened the log from the menu. As a sibling
+            // of the container (not a child) it is untouched by
+            // `clear_log_on_player_action`, which only despawns the container's lines.
+            (
+                LogHint
+                Text({LOG_HINT_TEXT})
+                TextFont { font_size: {FontSize::Px(LOG_HINT_FONT_SIZE)}, style: {FontStyle::Italic} }
+                TextColor({LOG_HINT_COLOR})
+                Visibility::Hidden
+            )
+        ]
+    });
 }
 
 /// `BattleSet::Ui`: drain pending [`LogMessage`]s into `Text` children of the log
@@ -114,18 +152,19 @@ pub fn render_log_panel(
     });
 }
 
-/// `BattleSet::Ui`: set the centre-panel width and the menu/log visibility from
-/// the current phase.
+/// `BattleSet::Ui`: set the centre-panel width and swap the menu / log visibility.
 ///
-/// While the log shows (enemy turn / battle over) the panel widens to the
-/// battle-log width and the menu hides; otherwise it narrows to the action-menu
-/// width and the menu shows. Reading [`UiConfig`] every frame means a live
-/// inspector edit to either half-width takes effect immediately — the Phase 8
-/// parity case. Mirrors Godot `ApplyCurrentPanelWidth` keyed off
-/// `_actionMenuActive`.
+/// The log fills the centre panel either automatically — during the enemy turn /
+/// battle-over, where the player cannot act ([`log_showing`]) — or on demand,
+/// when the player opens it from the menu's `Log` action ([`LogView::open`]). In
+/// both cases the panel widens to the battle-log width and the action menu hides;
+/// otherwise it narrows to the action-menu width and the menu shows. Reading
+/// [`UiConfig`] every frame means a live inspector width edit still takes effect
+/// immediately. Mirrors Godot `ApplyCurrentPanelWidth` keyed off `_actionMenuActive`.
 pub fn swap_panel_for_phase(
     state: Res<State<TurnPhase>>,
     config: Res<UiConfig>,
+    log_view: Res<LogView>,
     mut panel: Query<&mut Node, With<ActionMenuPanel>>,
     mut menu_visibility: Query<
         &mut Visibility,
@@ -133,7 +172,9 @@ pub fn swap_panel_for_phase(
     >,
     mut log_visibility: Query<&mut Visibility, (With<BattleLogPanel>, Without<ActionMenuPanel>)>,
 ) {
-    let showing = log_showing(*state.get());
+    // Show the log when the phase forces it (enemy turn / over) or the player has
+    // opened it from the menu.
+    let showing = log_showing(*state.get()) || log_view.open;
 
     if let Ok(mut node) = panel.single_mut() {
         node.width = Val::Px(config.panel_width(showing));
@@ -154,12 +195,34 @@ pub fn swap_panel_for_phase(
     }
 }
 
-/// `OnEnter(PlayerTurn)`: clear the battle-log lines so each player turn starts
-/// with an empty log, restoring the action-menu view. Despawns the container's
-/// children (the Godot `ClearMessages` → `ClearAndFreeChildren`); the
-/// panel-width / visibility restore is handled by [`swap_panel_for_phase`] from
-/// the new phase.
-pub fn clear_log_on_player_turn(
+/// `BattleSet::Ui`: show the "Esc/Enter to close" hint only when the player opened
+/// the log from the menu ([`LogView::open`]).
+///
+/// The hint is hidden during the enemy-turn / battle-over auto-show, where the
+/// log is informational and there is nothing for the player to close. It sets the
+/// hint to [`Visibility::Inherited`] (not `Visible`) when shown, so it still
+/// disappears with the panel when [`swap_panel_for_phase`] hides the log.
+pub fn toggle_log_hint(log_view: Res<LogView>, mut hint: Query<&mut Visibility, With<LogHint>>) {
+    if let Ok(mut visibility) = hint.single_mut() {
+        *visibility = if log_view.open {
+            Visibility::Inherited
+        } else {
+            Visibility::Hidden
+        };
+    }
+}
+
+/// `OnExit(PlayerTurn)`: clear the battle-log lines as the player commits an
+/// action, so the previous turn's lines survive the whole player turn and can be
+/// reviewed via the menu's `Log` option before being wiped.
+///
+/// Clearing here — rather than `OnEnter(PlayerTurn)` — is what gives the `Log`
+/// overlay something to show: the enemy turn's lines (and the player's own last
+/// attack) persist until the player picks Fight/Items/Defend/Flee, all of which
+/// leave `PlayerTurn`. Opening the `Log` overlay does **not** leave `PlayerTurn`,
+/// so it never triggers this. Despawns the container's children (the Godot
+/// `ClearMessages` → `ClearAndFreeChildren`).
+pub fn clear_log_on_player_action(
     mut commands: Commands,
     container: Query<&Children, With<BattleLogContainer>>,
 ) {

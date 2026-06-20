@@ -34,30 +34,39 @@ const INFO_PANE_COLOR: Color = Color::srgba(0.08, 0.08, 0.08, 0.7);
 const INFO_PANE_HEIGHT: f32 = 160.0;
 
 /// World-space size of an enemy mini HP bar (the Godot `enemy_health_bar`
-/// `custom_minimum_size` of 48×6).
-const ENEMY_BAR_SIZE: Vec2 = Vec2::new(48.0, 6.0);
+/// `custom_minimum_size` of 48×6). `pub(crate)` so the enemy spawner can build
+/// the bar inline in its `bsn!` scene (where the `#enemy` reference is in scope).
+pub(crate) const ENEMY_BAR_SIZE: Vec2 = Vec2::new(48.0, 6.0);
 /// How far above the enemy sprite origin the mini HP bar sits. Kept close to the
 /// sprite so the bar reads as belonging to it.
-const ENEMY_BAR_Y: f32 = 45.0;
+pub(crate) const ENEMY_BAR_Y: f32 = 45.0;
 /// How far above the HP bar the enemy name label floats, so the stack reads
 /// name → bar → sprite from top to bottom.
-const ENEMY_LABEL_Y: f32 = ENEMY_BAR_Y + 18.0;
+pub(crate) const ENEMY_LABEL_Y: f32 = ENEMY_BAR_Y + 18.0;
 /// Font size of the world-space enemy name label.
-const ENEMY_LABEL_FONT_SIZE: f32 = 16.0;
+pub(crate) const ENEMY_LABEL_FONT_SIZE: f32 = 16.0;
+
+/// White used for an un-highlighted enemy label, re-exported for the inline enemy
+/// HP-bar scene in the spawner.
+pub(crate) const ENEMY_LABEL_COLOR: Color = DEFAULT_COLOR;
+/// Track + fill colours for the enemy mini HP bar, re-exported for the spawner.
+pub(crate) const ENEMY_HP_TRACK_COLOR: Color = HP_TRACK_COLOR;
+pub(crate) const ENEMY_HP_FILL_COLOR: Color = HP_FILL_COLOR;
 
 /// Root of the bottom HUD bar (absolute, full-width). Holds the player HUD on the
-/// right and the enemy label column on the left.
-#[derive(Component, Debug)]
+/// right and the enemy label column on the left. `Default + Clone` lets the
+/// `bsn!` macro treat the marker as a `Template`.
+#[derive(Component, Debug, Default, Clone)]
 pub struct HudRoot;
 
 /// The player's name `Text`. Its colour is fixed; only its text changes,
 /// gaining the "(defeated)" suffix on death.
-#[derive(Component, Debug)]
+#[derive(Component, Debug, Default, Clone)]
 pub struct PlayerNameLabel;
 
 /// The inner fill of the player's HP bar; its `width` is set to
 /// `Val::Percent(100 * current / max)` each time the player's [`Health`] changes.
-#[derive(Component, Debug)]
+#[derive(Component, Debug, Default, Clone)]
 pub struct PlayerHpFill;
 
 /// One world-space enemy name label, floating above that enemy's HP bar. Tagged
@@ -65,7 +74,10 @@ pub struct PlayerHpFill;
 /// the current [`Targeted`] enemy and the death system can drop it when the enemy
 /// dies. Spawned as a child of the enemy (alongside the HP bar), so it rides
 /// along with the sprite.
-#[derive(Component, Debug, Clone, Copy)]
+///
+/// `FromTemplate` lets the `bsn!` macro accept an entity reference (`#enemy`) for
+/// the `owner` field when the HP bar is spawned inside the enemy's scene.
+#[derive(Component, Debug, Clone, Copy, FromTemplate)]
 pub struct EnemyNameLabel(pub Entity);
 
 /// The player's name as shown in the HUD: the bare name while alive, suffixed
@@ -95,69 +107,66 @@ pub fn hp_fill_fraction(current: i32, max: i32) -> f32 {
 /// name + HP track/fill, right-aligned.
 ///
 /// Enemy names no longer live here: they float in world space above each enemy's
-/// HP bar (see [`spawn_enemy_health_bar`]). The player widgets start blank and are
+/// HP bar (built inline in the enemy `bsn!` scene in [`crate::battle::spawn`]).
+/// The player widgets start blank and are
 /// filled by [`refresh_player_hud`] on the first `Changed<Health>` (which fires
 /// the frame the player spawns).
 pub fn spawn_hud(mut commands: Commands) {
     // The Godot `MenuPanel`: a full-width `PanelContainer` anchored to the bottom
     // with a fixed height and the dark translucent background. The player info
     // sits at the right edge (`justify_content: FlexEnd`).
-    commands
-        .spawn((
-            HudRoot,
-            Node {
-                position_type: PositionType::Absolute,
-                bottom: Val::Px(0.0),
-                left: Val::Px(0.0),
-                width: Val::Percent(100.0),
-                height: Val::Px(INFO_PANE_HEIGHT),
-                // The Godot `menu_panel` content margins: 16 px left/right.
-                padding: UiRect::axes(Val::Px(16.0), Val::Px(12.0)),
-                justify_content: JustifyContent::FlexEnd,
-                align_items: AlignItems::Center,
-                ..default()
-            },
-            BackgroundColor(INFO_PANE_COLOR),
-            DespawnOnExit(GameState::InBattle),
-        ))
-        .with_children(|root| {
-            // The player name over a fixed-width HP track + fill, matching the
-            // Godot `PlayerInfoContainer` (name right-aligned above a 200×12
-            // `ProgressBar`).
-            root.spawn(Node {
-                flex_direction: FlexDirection::Column,
-                row_gap: Val::Px(4.0),
-                width: Val::Px(200.0),
-                align_items: AlignItems::FlexEnd,
-                ..default()
-            })
-            .with_children(|column| {
-                column.spawn((PlayerNameLabel, Text::new(""), TextColor(DEFAULT_COLOR)));
-                // The HP track spans the column; the fill is a percentage-width
-                // child so the player's health fraction maps straight to its
-                // `width` (the Godot `ProgressBar.Value / MaxValue`).
-                column
-                    .spawn((
+    // The HUD tree authored as a `bsn!` scene: the bottom info pane (`HudRoot`)
+    // holds a right-aligned column with the player name above a 200×12 HP track,
+    // whose percentage-width fill child maps the health fraction straight to its
+    // `width` (the Godot `ProgressBar.Value / MaxValue`).
+    commands.spawn_scene(bsn! {
+        HudRoot
+        Node {
+            position_type: PositionType::Absolute,
+            bottom: Val::Px(0.0),
+            left: Val::Px(0.0),
+            width: Val::Percent(100.0),
+            height: Val::Px(INFO_PANE_HEIGHT),
+            // The Godot `menu_panel` content margins: 16 px left/right.
+            padding: {UiRect::axes(Val::Px(16.0), Val::Px(12.0))},
+            justify_content: JustifyContent::FlexEnd,
+            align_items: AlignItems::Center,
+        }
+        BackgroundColor({INFO_PANE_COLOR})
+        template_value(DespawnOnExit(GameState::InBattle))
+        Children [
+            (
+                // The player name over a fixed-width HP track + fill, matching the
+                // Godot `PlayerInfoContainer`.
+                Node {
+                    flex_direction: FlexDirection::Column,
+                    row_gap: Val::Px(4.0),
+                    width: Val::Px(200.0),
+                    align_items: AlignItems::FlexEnd,
+                }
+                Children [
+                    (PlayerNameLabel Text("") TextColor({DEFAULT_COLOR})),
+                    (
                         Node {
                             width: Val::Percent(100.0),
                             height: Val::Px(12.0),
-                            ..default()
-                        },
-                        BackgroundColor(HP_TRACK_COLOR),
-                    ))
-                    .with_children(|track| {
-                        track.spawn((
-                            PlayerHpFill,
-                            Node {
-                                width: Val::Percent(100.0),
-                                height: Val::Percent(100.0),
-                                ..default()
-                            },
-                            BackgroundColor(HP_FILL_COLOR),
-                        ));
-                    });
-            });
-        });
+                        }
+                        BackgroundColor({HP_TRACK_COLOR})
+                        Children [
+                            (
+                                PlayerHpFill
+                                Node {
+                                    width: Val::Percent(100.0),
+                                    height: Val::Percent(100.0),
+                                }
+                                BackgroundColor({HP_FILL_COLOR})
+                            )
+                        ]
+                    )
+                ]
+            )
+        ]
+    });
 }
 
 /// `BattleSet::Ui`: on a player `Health` change, update the name label
@@ -188,8 +197,9 @@ pub fn refresh_player_hud(
 /// `BattleSet::Ui`: drop a world-space enemy name label once its enemy dies, so a
 /// defeated enemy keeps neither a name nor an HP bar floating over its sprite.
 ///
-/// The label is spawned as a child of the enemy (see [`spawn_enemy_health_bar`]),
-/// so it appears with the sprite and rides along with it; this system only needs
+/// The label is spawned as a child of the enemy (in the enemy `bsn!` scene in
+/// [`crate::battle::spawn`]), so it appears with the sprite and rides along with
+/// it; this system only needs
 /// to remove it on death. Runs only when an enemy's [`Health`] changed, so a
 /// steady state costs one cheap early-out. Replaces the Godot
 /// `ClearAndFreeChildren` + re-add of alive enemies.
@@ -286,40 +296,10 @@ pub fn sync_enemy_health_bars(
     }
 }
 
-/// Spawn an enemy's world-space overlay — the name label, the mini HP bar (dark
-/// track + red fill), stacked above the sprite as name → bar → sprite.
-///
-/// Called from the enemy spawner so each enemy owns these. The bar sits
-/// [`ENEMY_BAR_Y`] above the sprite origin and the name [`ENEMY_LABEL_Y`] above
-/// that. The fill carries an [`EnemyHealthBar`] tagged with `owner` so
-/// [`sync_enemy_health_bars`] can scale it against that enemy's health; the name
-/// carries an [`EnemyNameLabel`] for the targeting highlight and the death
-/// despawn. All are children of the enemy, so they ride along with the sprite.
-pub fn spawn_enemy_health_bar(parent: &mut ChildSpawnerCommands, owner: Entity, name: &str) {
-    // Name label, floating above the HP bar.
-    parent.spawn((
-        EnemyNameLabel(owner),
-        Text2d::new(name.to_string()),
-        TextFont {
-            font_size: FontSize::Px(ENEMY_LABEL_FONT_SIZE),
-            ..default()
-        },
-        TextColor(DEFAULT_COLOR),
-        Transform::from_xyz(0.0, ENEMY_LABEL_Y, 0.7),
-    ));
-    // Dark track behind the fill.
-    parent.spawn((
-        Sprite::from_color(HP_TRACK_COLOR, ENEMY_BAR_SIZE),
-        Transform::from_xyz(0.0, ENEMY_BAR_Y, 0.5),
-    ));
-    // Red fill, full width at spawn (full health); scaled down by
-    // `sync_enemy_health_bars` as the enemy takes damage.
-    parent.spawn((
-        EnemyHealthBar { owner },
-        Sprite::from_color(HP_FILL_COLOR, ENEMY_BAR_SIZE),
-        Transform::from_xyz(0.0, ENEMY_BAR_Y, 0.6),
-    ));
-}
+// The enemy's world-space overlay (name label + mini HP bar) is built inline in
+// the enemy `bsn!` scene in `battle::spawn`, where the `#enemy` self-reference is
+// in scope so the `EnemyNameLabel` / `EnemyHealthBar` markers can carry the
+// enemy's own `Entity`. The styling constants above are `pub(crate)` for that.
 
 #[cfg(test)]
 mod tests {

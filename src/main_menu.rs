@@ -69,15 +69,16 @@ pub struct MainMenuSelection {
 }
 
 /// Root container of the whole menu UI, despawned wholesale on leaving the menu.
-#[derive(Component, Debug)]
+/// `Default + Clone` lets the `bsn!` macro treat the marker as a `Template`.
+#[derive(Component, Debug, Default, Clone)]
 pub struct MainMenuRoot;
 
 /// The yellow `>` cursor child of a row; visible only on the highlighted row.
-#[derive(Component, Debug, Clone, Copy)]
+#[derive(Component, Debug, Clone, Copy, FromTemplate)]
 pub struct MainMenuCursor(pub usize);
 
 /// The option-name `Text` of a row, recoloured on highlight.
-#[derive(Component, Debug, Clone, Copy)]
+#[derive(Component, Debug, Clone, Copy, FromTemplate)]
 pub struct MainMenuLabel(pub usize);
 
 /// Wires the start-up menu: spawns it on entering [`GameState::MainMenu`],
@@ -99,65 +100,66 @@ pub(crate) fn plugin(app: &mut App) {
 pub fn spawn_main_menu(mut commands: Commands, mut selection: ResMut<MainMenuSelection>) {
     selection.highlighted = Some(0);
 
-    commands
-        .spawn((
-            MainMenuRoot,
-            Node {
-                position_type: PositionType::Absolute,
-                width: Val::Percent(100.0),
-                height: Val::Percent(100.0),
-                flex_direction: FlexDirection::Column,
-                justify_content: JustifyContent::Center,
-                align_items: AlignItems::Center,
-                row_gap: Val::Px(12.0),
-                ..default()
-            },
-        ))
-        .with_children(|root| {
-            root.spawn((
-                Text::new("Bevy 2D RPG"),
-                TextFont {
-                    font_size: FontSize::Px(TITLE_FONT_SIZE),
-                    ..default()
-                },
-                TextColor(DEFAULT_COLOR),
-                Node {
-                    margin: UiRect::bottom(Val::Px(32.0)),
-                    ..default()
-                },
-            ));
+    // A centred column: the game title above the three option rows. The rows are
+    // index-parametrized, so they are built as a `Vec<impl Scene>` (a `SceneList`)
+    // and spliced into the root's `Children` after the title with `{rows}`.
+    let rows: Vec<_> = MenuOption::ALL
+        .iter()
+        .enumerate()
+        .map(|(index, option)| menu_row(index, option.label()))
+        .collect();
+    commands.spawn_scene(bsn! {
+        MainMenuRoot
+        Node {
+            position_type: PositionType::Absolute,
+            width: Val::Percent(100.0),
+            height: Val::Percent(100.0),
+            flex_direction: FlexDirection::Column,
+            justify_content: JustifyContent::Center,
+            align_items: AlignItems::Center,
+            row_gap: Val::Px(12.0),
+        }
+        Children [
+            (
+                Text("Bevy 2D RPG")
+                TextFont { font_size: {FontSize::Px(TITLE_FONT_SIZE)} }
+                TextColor({DEFAULT_COLOR})
+                Node { margin: {UiRect::bottom(Val::Px(32.0))} }
+            ),
+            {rows}
+        ]
+    });
+}
 
-            for (index, option) in MenuOption::ALL.iter().enumerate() {
-                root.spawn(Node {
-                    flex_direction: FlexDirection::Row,
-                    column_gap: Val::Px(8.0),
-                    ..default()
-                })
-                .with_children(|row| {
-                    row.spawn((
-                        MainMenuCursor(index),
-                        Text::new(CURSOR_TEXT),
-                        TextFont {
-                            font_size: FontSize::Px(OPTION_FONT_SIZE),
-                            ..default()
-                        },
-                        TextColor(HIGHLIGHT_COLOR),
-                        // Hidden until `update_main_menu_highlight` reveals the
-                        // cursor on the highlighted row.
-                        Visibility::Hidden,
-                    ));
-                    row.spawn((
-                        MainMenuLabel(index),
-                        Text::new(option.label()),
-                        TextFont {
-                            font_size: FontSize::Px(OPTION_FONT_SIZE),
-                            ..default()
-                        },
-                        TextColor(DEFAULT_COLOR),
-                    ));
-                });
-            }
-        });
+/// One main-menu row scene: a flex row holding the (initially hidden) yellow `>`
+/// cursor and the option label, both tagged with `index` for
+/// [`update_main_menu_highlight`]. Returns an `impl Scene` so the rows can be
+/// collected into a `SceneList` and spliced into the root column.
+fn menu_row(index: usize, label: &str) -> impl Scene {
+    let label = label.to_string();
+    bsn! {
+        Node {
+            flex_direction: FlexDirection::Row,
+            column_gap: Val::Px(8.0),
+        }
+        Children [
+            (
+                MainMenuCursor({index})
+                Text({CURSOR_TEXT})
+                TextFont { font_size: {FontSize::Px(OPTION_FONT_SIZE)} }
+                TextColor({HIGHLIGHT_COLOR})
+                // Hidden until `update_main_menu_highlight` reveals the cursor on
+                // the highlighted row.
+                Visibility::Hidden
+            ),
+            (
+                MainMenuLabel({index})
+                Text({label})
+                TextFont { font_size: {FontSize::Px(OPTION_FONT_SIZE)} }
+                TextColor({DEFAULT_COLOR})
+            )
+        ]
+    }
 }
 
 /// `OnExit(MainMenu)`: tear the whole menu down. One despawn of the tagged root

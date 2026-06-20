@@ -9,6 +9,7 @@
 use bevy::asset::AssetPlugin;
 use bevy::ecs::system::RunSystemOnce;
 use bevy::prelude::*;
+use bevy::scene::ScenePlugin;
 
 use bevy_2d_rpg_game::battle::spawn::{BattleLayout, RosterEntry, spawn_enemies, spawn_player};
 use bevy_2d_rpg_game::characters::definition::{CharacterDef, CombatStatsDef};
@@ -16,12 +17,13 @@ use bevy_2d_rpg_game::components::{
     CombatStats, DamageVariance, DisplayName, Enemy, Health, Player,
 };
 
-/// Minimal headless world with just the asset infrastructure (for `AssetServer`).
-/// `Image` is registered explicitly so `Sprite::from_image` can mint texture
-/// handles without pulling in the renderer.
+/// Minimal headless world with the asset + scene infrastructure. `AssetServer`
+/// mints texture handles for the `bsn!` `Sprite { image: ... }`, and `ScenePlugin`
+/// backs the `spawn_scene` the enemy spawner now uses; `Image` is registered
+/// explicitly so handles resolve without pulling in the renderer.
 fn headless_app() -> App {
     let mut app = App::new();
-    app.add_plugins((MinimalPlugins, AssetPlugin::default()))
+    app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin))
         .init_asset::<Image>();
     app
 }

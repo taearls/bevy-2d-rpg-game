@@ -20,7 +20,8 @@ pub mod hud;
 use bevy::prelude::*;
 
 use battle_log::{
-    clear_log_on_player_turn, render_log_panel, spawn_battle_log, swap_panel_for_phase,
+    clear_log_on_player_action, render_log_panel, spawn_battle_log, swap_panel_for_phase,
+    toggle_log_hint,
 };
 use hud::{
     refresh_enemy_labels, refresh_player_hud, spawn_hud, sync_enemy_health_bars,
@@ -93,7 +94,10 @@ pub(crate) fn plugin(app: &mut App) {
         // Spawn the HUD/log tree when a battle starts, not at startup, so it
         // never sits behind the main menu before "New Game" is chosen.
         .add_systems(OnEnter(GameState::InBattle), (spawn_hud, spawn_battle_log))
-        .add_systems(OnEnter(TurnPhase::PlayerTurn), clear_log_on_player_turn)
+        // Clear the log as the player commits an action (leaves PlayerTurn), so
+        // the previous turn's lines persist and can be reviewed via the menu's
+        // `Log` option during the turn.
+        .add_systems(OnExit(TurnPhase::PlayerTurn), clear_log_on_player_action)
         .add_systems(
             Update,
             (
@@ -104,6 +108,7 @@ pub(crate) fn plugin(app: &mut App) {
                 sync_enemy_health_bars,
                 render_log_panel,
                 swap_panel_for_phase,
+                toggle_log_hint,
             )
                 .in_set(BattleSet::Ui),
         );

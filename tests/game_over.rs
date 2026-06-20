@@ -7,6 +7,7 @@
 //! the `Update` systems read it.
 
 use bevy::prelude::*;
+use bevy::scene::ScenePlugin;
 use bevy::state::app::StatesPlugin;
 
 use bevy_2d_rpg_game::components::Health;
@@ -23,21 +24,28 @@ use bevy_2d_rpg_game::state::GameState;
 /// meaningful.
 fn game_over_app() -> App {
     let mut app = App::new();
-    app.add_plugins((MinimalPlugins, StatesPlugin))
-        .init_resource::<ButtonInput<KeyCode>>()
-        .init_resource::<GameOverSelection>()
-        .insert_resource(PlayerProgress {
-            health: Some(Health {
-                current: 0,
-                max: 120,
-            }),
-        })
-        .init_state::<GameState>()
-        .add_systems(OnEnter(GameState::GameOver), spawn_game_over)
-        .add_systems(
-            Update,
-            (game_over_input, update_game_over_highlight).run_if(in_state(GameState::GameOver)),
-        );
+    // `AssetPlugin` + `ScenePlugin` back the `bsn!` + `spawn_scene` the screen is
+    // now built with (provided by `DefaultPlugins` in the real binary).
+    app.add_plugins((
+        MinimalPlugins,
+        AssetPlugin::default(),
+        ScenePlugin,
+        StatesPlugin,
+    ))
+    .init_resource::<ButtonInput<KeyCode>>()
+    .init_resource::<GameOverSelection>()
+    .insert_resource(PlayerProgress {
+        health: Some(Health {
+            current: 0,
+            max: 120,
+        }),
+    })
+    .init_state::<GameState>()
+    .add_systems(OnEnter(GameState::GameOver), spawn_game_over)
+    .add_systems(
+        Update,
+        (game_over_input, update_game_over_highlight).run_if(in_state(GameState::GameOver)),
+    );
 
     app.world_mut()
         .resource_mut::<NextState<GameState>>()
