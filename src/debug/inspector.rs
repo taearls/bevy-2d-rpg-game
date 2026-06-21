@@ -24,6 +24,7 @@ use std::fmt::Write as _;
 use bevy::prelude::*;
 
 use crate::components::{CombatStats, DamageVariance, DisplayName, Enemy, Health, Player};
+use crate::state::DebugInputCapture;
 
 /// The entity the inspector is currently editing, plus which field row is
 /// focused. `None` while nothing is selected (the panel is hidden).
@@ -148,9 +149,21 @@ pub(super) fn plugin(app: &mut App) {
                 make_combatants_pickable,
                 clear_on_escape,
                 edit_focused_field,
+                sync_input_capture,
                 redraw_panel,
             ),
         );
+}
+
+/// Mirror the modal state into the shared [`DebugInputCapture`] so battle input
+/// (menu, targeting) is suppressed while an entity is selected, and restored the
+/// moment it's deselected. This is the "vice versa" half of the mutual exclusion:
+/// the inspector owns the keyboard exactly while it has a selection.
+fn sync_input_capture(inspected: Res<Inspected>, mut capture: ResMut<DebugInputCapture>) {
+    let active = inspected.entity.is_some();
+    if capture.0 != active {
+        capture.0 = active;
+    }
 }
 
 /// Make every combatant clickable for the inspector. Enemies already carry
@@ -185,12 +198,17 @@ fn on_click_select(
     click: On<Pointer<Click>>,
     inspectable: Query<(), Or<(With<Health>, With<CombatStats>, With<DamageVariance>)>>,
     mut inspected: ResMut<Inspected>,
+    mut capture: ResMut<DebugInputCapture>,
 ) {
     if inspectable.get(click.entity).is_err() {
         return; // propagated ancestor hit (e.g. camera) — not an inspectable entity
     }
     inspected.entity = Some(click.entity);
     inspected.field = 0;
+    // Take the keyboard *synchronously* on this same click, so the targeting
+    // observer (which reads this flag) treats the opening click as inspect-only,
+    // never as an attack — regardless of observer run order.
+    capture.0 = true;
 }
 
 /// Esc clears the selection, hiding the panel.

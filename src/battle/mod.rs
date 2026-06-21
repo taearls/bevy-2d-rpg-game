@@ -20,7 +20,7 @@ use crate::combat::events::{AttackRequested, DamageDealt};
 use crate::combat::resolve::{apply_attacks, check_battle_end, on_died_hide_sprite};
 use crate::components::{CombatStats, DamageVariance, Health, Player};
 use crate::progress::PlayerProgress;
-use crate::state::GameState;
+use crate::state::{DebugInputCapture, GameState};
 use enemy_turn::{EnemyTurnQueue, on_enter_enemy_turn, tick_enemy_turn};
 use menu::{
     LogView, MenuSelection, close_log_view_on_player_turn, log_overlay_input, menu_input,
@@ -79,6 +79,16 @@ pub(crate) fn plugin(app: &mut App) {
             )
                 .chain()
                 .run_if(in_state(GameState::InBattle)),
+        )
+        // While the debug entity inspector is modal (an entity is selected), it
+        // owns the keyboard — suppress all battle input so the same keypress
+        // isn't also consumed by the menu/targeting. Resolve/Cleanup/Ui keep
+        // running, so HP bars and the log still redraw as stats are edited live.
+        // Always false in non-debug builds (nothing sets it), so this is a no-op
+        // there. See [`DebugInputCapture`].
+        .configure_sets(
+            Update,
+            BattleSet::Input.run_if(not(DebugInputCapture::active)),
         )
         // Preload the roster at startup so the templates are resident the
         // instant the player picks "New Game"; the combatant + action-menu
