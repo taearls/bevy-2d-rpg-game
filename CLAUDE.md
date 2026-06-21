@@ -24,7 +24,12 @@ just format         # cargo fmt
 
 Gate every change on `just ci` locally and rely on its **exit code** (see "CI" below). To run a single test: `cargo test <name>` (e.g. `cargo test --test battle_flow`, or `cargo test compute_damage`).
 
-`just run-debug` launches with the **diagnostics overlay**: Bevy's official `FpsOverlayPlugin` (from `bevy_dev_tools`), an FPS / frame-time readout toggled in-game with F12, gated behind the `debug-overlay` cargo feature (`src/debug/mod.rs`). It replaced the earlier `bevy-inspector-egui` community inspector, which had no Bevy 0.19 release — the egui dependency is gone. The plugin is a no-op without a `RenderApp` (so headless `--features debug-overlay` tests stay green); the whole module is `#[cfg(feature = "debug-overlay")]` so default/release/wasm builds and tests never link `bevy_dev_tools`.
+`just run-debug` launches with two debug tools, both gated behind the `debug-overlay` cargo feature (`src/debug/`):
+
+1. **Diagnostics overlay** (`src/debug/mod.rs`) — Bevy's official `FpsOverlayPlugin` (from `bevy_dev_tools`) showing an FPS readout, plus a custom `debug/frame_counter` `Diagnostic` rendered in a `Text` node beneath it. Toggled in-game with **F12**. The graph half of `FpsOverlayPlugin` (`FrameTimeGraphConfig.enabled`) is turned **off** — its custom-material shader renders as a solid red block on the Metal backend, and only the numbers are wanted.
+2. **Entity inspector** (`src/debug/inspector.rs`) — an egui-free, in-window stat editor. **Click** a combatant sprite to select it (a debug-only system inserts `Pickable` onto any entity with `Health`, so the player — which has no `Pickable` in gameplay code — is also clickable); the top-right panel lists its gameplay stats. **Tab**/**Shift+Tab** move the field cursor, **+/-** (or arrows) edit, **Shift** ×10, **Esc** closes. The editable allow-list is *gameplay only* (`Health`, `CombatStats`, `DamageVariance`) with clamping — never Bevy internals like `Transform`/`Sprite`. Selection ignores propagated ancestor hits (`Pointer<Click>` is an auto-propagating `EntityEvent`) by accepting only entities that carry an editable component.
+
+Both replaced the earlier `bevy-inspector-egui` community inspector, which had no Bevy 0.19 release — the egui dependency is gone. The overlay plugin is a no-op without a `RenderApp` (so headless `--features debug-overlay` tests stay green); the whole module is `#[cfg(feature = "debug-overlay")]` so default/release/wasm builds and tests never link `bevy_dev_tools`.
 
 ### Deterministic spawns
 

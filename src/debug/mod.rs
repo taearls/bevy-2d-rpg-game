@@ -15,7 +15,11 @@
 //! [`GamePlugin`](crate::game::GamePlugin), so a default `cargo build` compiles
 //! `bevy_dev_tools` out — tests and release/wasm bundles never pull it in.
 
-use bevy::dev_tools::fps_overlay::{FPS_OVERLAY_ZINDEX, FpsOverlayConfig, FpsOverlayPlugin};
+mod inspector;
+
+use bevy::dev_tools::fps_overlay::{
+    FPS_OVERLAY_ZINDEX, FpsOverlayConfig, FpsOverlayPlugin, FrameTimeGraphConfig,
+};
 use bevy::diagnostic::{
     Diagnostic, DiagnosticPath, Diagnostics, DiagnosticsStore, RegisterDiagnostic,
 };
@@ -48,7 +52,18 @@ pub fn plugin(app: &mut App) {
         return;
     }
 
-    app.add_plugins(FpsOverlayPlugin::default())
+    // Keep the numeric FPS readout but turn off the frame-time *graph*: its
+    // custom UI-material shader renders as a solid red block on the Metal
+    // backend here, and the numbers (FPS + our frame counter) are what's wanted.
+    let config = FpsOverlayConfig {
+        frame_time_graph_config: FrameTimeGraphConfig {
+            enabled: false,
+            ..default()
+        },
+        ..default()
+    };
+
+    app.add_plugins((FpsOverlayPlugin { config }, inspector::plugin))
         .register_diagnostic(Diagnostic::new(FRAME_COUNTER))
         .add_systems(Startup, spawn_frame_counter_text)
         .add_systems(Update, (tick_frame_counter, update_frame_counter_text))
