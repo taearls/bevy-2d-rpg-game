@@ -325,7 +325,7 @@ fn redraw_panel(
             }
         }
     }
-    out.push_str("\nTab cycle · +/- edit · Shift ×10 · Esc close");
+    out.push_str("\nTab cycle | +/- edit | Shift x10 | Esc close");
 
     ***text = out;
 }
