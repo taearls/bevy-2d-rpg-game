@@ -21,8 +21,9 @@ use bevy_2d_rpg_game::battle::messages::LogMessage;
 use bevy_2d_rpg_game::battle::state::{BattleSet, TurnPhase};
 use bevy_2d_rpg_game::battle::ui::UiConfig;
 use bevy_2d_rpg_game::battle::ui::battle_log::{
-    BattleLogContainer, BattleLogPanel, LogHint, LogHold, clear_log_on_player_action,
-    render_log_panel, spawn_battle_log, swap_panel_for_phase, toggle_log_hint,
+    BattleHistory, BattleLogContainer, BattleLogPanel, HistoryContainer, HistoryScroll,
+    HistoryViewport, LogHint, LogHold, clear_log_on_player_action, manage_history_view,
+    record_history, render_log_panel, spawn_battle_log, swap_panel_for_phase, toggle_log_hint,
 };
 use bevy_2d_rpg_game::battle::ui::hud::{
     EnemyNameLabel, PlayerHpFill, PlayerNameLabel, refresh_enemy_labels, refresh_player_hud,
@@ -53,6 +54,8 @@ fn ui_app(enemy_healths: &[i32]) -> (App, Vec<Entity>, Entity) {
     .init_resource::<LogView>()
     .init_resource::<UiConfig>()
     .init_resource::<LogHold>()
+    .init_resource::<BattleHistory>()
+    .init_resource::<HistoryScroll>()
     .init_state::<TurnPhase>()
     .add_message::<LogMessage>()
     .configure_sets(
@@ -77,7 +80,9 @@ fn ui_app(enemy_healths: &[i32]) -> (App, Vec<Entity>, Entity) {
             sync_enemy_health_bars,
             update_menu_highlight,
             render_log_panel.before(swap_panel_for_phase),
+            record_history,
             swap_panel_for_phase,
+            manage_history_view.after(swap_panel_for_phase),
             toggle_log_hint,
         )
             .in_set(BattleSet::Ui),
@@ -567,4 +572,75 @@ fn ui_config_edit_changes_panel_width() {
         .action_menu_half_width = 150.0;
     app.update();
     assert_eq!(panel_width(&mut app), Val::Px(300.0));
+}
+
+/// The persistent `BattleHistory` accumulates every line across turns — even as
+/// the recent-lines box is wiped on each player action — and the menu's `Log`
+/// view renders the whole history into the scrollable `HistoryContainer`, shown
+/// in its viewport while open.
+#[test]
+fn log_view_shows_full_scrollable_history() {
+    let (mut app, _enemies, _player) = ui_app(&[100]);
+
+    let write = |app: &mut App, text: &str| {
+        app.world_mut()
+            .resource_mut::<Messages<LogMessage>>()
+            .write(LogMessage::new(text));
+        app.update();
+    };
+    let recent_count = |app: &mut App| {
+        let mut q = app
+            .world_mut()
+            .query_filtered::<Option<&Children>, With<BattleLogContainer>>();
+        q.single(app.world()).unwrap().map_or(0, Children::len)
+    };
+    let history_count = |app: &mut App| {
+        let mut q = app
+            .world_mut()
+            .query_filtered::<Option<&Children>, With<HistoryContainer>>();
+        q.single(app.world()).unwrap().map_or(0, Children::len)
+    };
+    let viewport_shown = |app: &mut App| {
+        let mut q = app
+            .world_mut()
+            .query_filtered::<&Node, With<HistoryViewport>>();
+        q.single(app.world()).unwrap().display != Display::None
+    };
+
+    // Turn 1: two lines, then commit an action (leave PlayerTurn) to wipe the
+    // recent box. The history must keep both.
+    write(&mut app, "Hero attacks Goblin 0 for 7 damage!");
+    write(&mut app, "Goblin 0 attacks Hero for 5 damage!");
+    set_phase(&mut app, TurnPhase::Targeting);
+    set_phase(&mut app, TurnPhase::PlayerTurn);
+    assert_eq!(recent_count(&mut app), 0, "recent box cleared on action");
+    assert_eq!(
+        app.world().resource::<BattleHistory>().lines().len(),
+        2,
+        "history keeps lines across the action that cleared the recent box"
+    );
+
+    // Turn 2: one more line — history grows to three.
+    write(&mut app, "Hero attacks Goblin 0 for 6 damage!");
+    assert_eq!(app.world().resource::<BattleHistory>().lines().len(), 3);
+
+    // Open the Log view: the viewport shows and the history container holds every
+    // line, not just the current turn's.
+    app.world_mut().resource_mut::<LogView>().open = true;
+    app.update();
+    assert!(
+        viewport_shown(&mut app),
+        "history viewport is laid out (display != None) while the Log view is open"
+    );
+    assert_eq!(
+        history_count(&mut app),
+        3,
+        "the Log view renders the full battle history",
+    );
+
+    // Closing it removes the viewport from layout again (so it can't shift the
+    // recent-lines box).
+    app.world_mut().resource_mut::<LogView>().open = false;
+    app.update();
+    assert!(!viewport_shown(&mut app));
 }

@@ -20,8 +20,9 @@ pub mod hud;
 use bevy::prelude::*;
 
 use battle_log::{
-    LogHold, clear_log_on_player_action, render_log_panel, spawn_battle_log, swap_panel_for_phase,
-    toggle_log_hint,
+    BattleHistory, HistoryScroll, LogHold, clear_log_on_player_action, manage_history_view,
+    record_history, render_log_panel, reset_history, scroll_history, spawn_battle_log,
+    swap_panel_for_phase, toggle_log_hint,
 };
 use hud::{
     refresh_enemy_labels, refresh_player_hud, spawn_hud, sync_enemy_health_bars,
@@ -92,13 +93,28 @@ pub(crate) fn plugin(app: &mut App) {
     app.register_type::<UiConfig>()
         .init_resource::<UiConfig>()
         .init_resource::<LogHold>()
+        .init_resource::<BattleHistory>()
+        .init_resource::<HistoryScroll>()
         // Spawn the HUD/log tree when a battle starts, not at startup, so it
-        // never sits behind the main menu before "New Game" is chosen.
-        .add_systems(OnEnter(GameState::InBattle), (spawn_hud, spawn_battle_log))
-        // Clear the log as the player commits an action (leaves PlayerTurn), so
-        // the previous turn's lines persist and can be reviewed via the menu's
-        // `Log` option during the turn.
+        // never sits behind the main menu before "New Game" is chosen; start the
+        // history empty so the `Log` view never shows a prior fight.
+        .add_systems(
+            OnEnter(GameState::InBattle),
+            (spawn_hud, spawn_battle_log, reset_history),
+        )
+        // Clear the recent-lines box as the player commits an action (leaves
+        // PlayerTurn) so it shows just the last turn; the full `BattleHistory`
+        // (behind the menu's `Log` view) is untouched and keeps the whole fight.
         .add_systems(OnExit(TurnPhase::PlayerTurn), clear_log_on_player_action)
+        // Scroll the open `Log` history (keyboard + wheel) during the player turn,
+        // the only phase the view can be open. In `Input` so it reads keys/wheel
+        // alongside the menu, gated to `PlayerTurn` like the rest of menu input.
+        .add_systems(
+            Update,
+            scroll_history
+                .in_set(BattleSet::Input)
+                .run_if(in_state(TurnPhase::PlayerTurn)),
+        )
         .add_systems(
             Update,
             (
@@ -110,7 +126,11 @@ pub(crate) fn plugin(app: &mut App) {
                 // `render_log_panel` stamps the visibility hold that
                 // `swap_panel_for_phase` reads, so it must run first this frame.
                 render_log_panel.before(swap_panel_for_phase),
+                record_history,
                 swap_panel_for_phase,
+                // After the panel width/visibility is set, swap the recent box
+                // for the scrollable history while the `Log` view is open.
+                manage_history_view.after(swap_panel_for_phase),
                 toggle_log_hint,
             )
                 .in_set(BattleSet::Ui),
