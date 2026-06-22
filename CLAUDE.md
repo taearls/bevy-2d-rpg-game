@@ -79,6 +79,13 @@ Input → Resolve → Cleanup → Ui
 
 The whole chain is `.chain().run_if(in_state(GameState::InBattle))`. `Input` queues `AttackRequested` messages; `Resolve` (`apply_attacks`) applies them and emits `DamageDealt`; `Cleanup` (`check_battle_end`) runs **only `on_message::<DamageDealt>`** — gating on the message rather than the state prevents a *cancelled* targeting from being wrongly pushed into EnemyTurn/BattleOver; `Ui` redraws cursor/HP-bars/log from world state. Combat is event-driven: producers (targeting, enemy turn) write `AttackRequested`; consumers read `DamageDealt`.
 
+### Battle log (two views) (`src/battle/ui/battle_log.rs`)
+
+`LogMessage`s feed **two** on-screen views, both fed off the same message stream (each system has its own `MessageReader` cursor):
+
+- **Recent-lines box** (`BattleLogContainer`) — the auto-show during the enemy turn / battle-over (and the player's last attack), cleared each time the player commits an action (`clear_log_on_player_action`, `OnExit(PlayerTurn)`) so it only ever holds the last turn. To keep a freshly written line from flashing on a quick phase flip, `swap_panel_for_phase` holds the panel visible for ≥`LOG_VISIBLE_HOLD` (1.5s, wall-clock via `Time<Real>`) after the last write, tracked in `LogHold`; committing an action drops the lines *and* the hold.
+- **Full history** (the menu's `Log` command) — a `BattleHistory` resource accumulates **every** line of the fight (reset `OnEnter(InBattle)`), rendered into a scrollable `HistoryViewport` (`HistoryContainer` inner column) shown only while `LogView::open`. The viewport uses **`max_height` + `Overflow::scroll_y`** so it hugs short content and caps + scrolls when long, and is toggled with **`Node.display`** (not `Visibility`) so a closed viewport takes no layout space (a hidden-but-laid-out node would shift the recent box). `manage_history_view` (Ui set) swaps the two boxes and rebuilds the lines on change, requesting a snap-to-bottom; `scroll_history` (Input set, `PlayerTurn`) does keyboard (Up/Down, PageUp/PageDown) + mouse-wheel scrolling and the deferred snap. **Scroll bounds come from the measured `ComputedNode`** (`content_size` minus the inner area inside padding/border, physical→logical via `inverse_scale_factor`), never a line-count estimate — so the bottom line lands fully visible regardless of font/padding.
+
 ### Combat is split for testability
 
 `src/combat/` separates the **pure** damage math (`damage.rs`, `compute_damage` — unit-testable with no ECS) from the event vocabulary (`events.rs`) and the resolution systems (`resolve.rs`). When adding combat logic, keep formulas pure and push them down to `damage.rs`; reserve `resolve.rs` for the ECS plumbing.
