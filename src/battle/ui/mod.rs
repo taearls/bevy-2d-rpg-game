@@ -20,7 +20,7 @@ pub mod hud;
 use bevy::prelude::*;
 
 use battle_log::{
-    clear_log_on_player_action, render_log_panel, spawn_battle_log, swap_panel_for_phase,
+    LogHold, clear_log_on_player_action, render_log_panel, spawn_battle_log, swap_panel_for_phase,
     toggle_log_hint,
 };
 use hud::{
@@ -91,6 +91,7 @@ pub fn log_showing(phase: TurnPhase) -> bool {
 pub(crate) fn plugin(app: &mut App) {
     app.register_type::<UiConfig>()
         .init_resource::<UiConfig>()
+        .init_resource::<LogHold>()
         // Spawn the HUD/log tree when a battle starts, not at startup, so it
         // never sits behind the main menu before "New Game" is chosen.
         .add_systems(OnEnter(GameState::InBattle), (spawn_hud, spawn_battle_log))
@@ -106,7 +107,9 @@ pub(crate) fn plugin(app: &mut App) {
                 sync_enemy_label_text,
                 update_enemy_label_highlight,
                 sync_enemy_health_bars,
-                render_log_panel,
+                // `render_log_panel` stamps the visibility hold that
+                // `swap_panel_for_phase` reads, so it must run first this frame.
+                render_log_panel.before(swap_panel_for_phase),
                 swap_panel_for_phase,
                 toggle_log_hint,
             )

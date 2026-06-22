@@ -21,8 +21,8 @@ use bevy_2d_rpg_game::battle::messages::LogMessage;
 use bevy_2d_rpg_game::battle::state::{BattleSet, TurnPhase};
 use bevy_2d_rpg_game::battle::ui::UiConfig;
 use bevy_2d_rpg_game::battle::ui::battle_log::{
-    BattleLogContainer, BattleLogPanel, LogHint, clear_log_on_player_action, render_log_panel,
-    spawn_battle_log, swap_panel_for_phase, toggle_log_hint,
+    BattleLogContainer, BattleLogPanel, LogHint, LogHold, clear_log_on_player_action,
+    render_log_panel, spawn_battle_log, swap_panel_for_phase, toggle_log_hint,
 };
 use bevy_2d_rpg_game::battle::ui::hud::{
     EnemyNameLabel, PlayerHpFill, PlayerNameLabel, refresh_enemy_labels, refresh_player_hud,
@@ -52,6 +52,7 @@ fn ui_app(enemy_healths: &[i32]) -> (App, Vec<Entity>, Entity) {
     .init_resource::<MenuSelection>()
     .init_resource::<LogView>()
     .init_resource::<UiConfig>()
+    .init_resource::<LogHold>()
     .init_state::<TurnPhase>()
     .add_message::<LogMessage>()
     .configure_sets(
@@ -75,7 +76,7 @@ fn ui_app(enemy_healths: &[i32]) -> (App, Vec<Entity>, Entity) {
             update_enemy_label_highlight,
             sync_enemy_health_bars,
             update_menu_highlight,
-            render_log_panel,
+            render_log_panel.before(swap_panel_for_phase),
             swap_panel_for_phase,
             toggle_log_hint,
         )
@@ -404,7 +405,9 @@ fn log_appends_persists_into_player_turn_then_clears_on_action() {
     );
 
     // Returning to the player turn keeps the lines (reviewable via the Log menu
-    // option); the menu width restores to 200 px.
+    // option). The panel stays wide because the freshly written lines are still
+    // inside their `LOG_VISIBLE_HOLD` window — so a quick enemy-turn → player-turn
+    // flip can't make recent messages flash and vanish.
     set_phase(&mut app, TurnPhase::PlayerTurn);
     assert_eq!(
         log_child_count(&mut app),
@@ -413,16 +416,22 @@ fn log_appends_persists_into_player_turn_then_clears_on_action() {
     );
     assert_eq!(
         panel_width(&mut app),
-        Val::Px(200.0),
-        "the menu width is restored"
+        Val::Px(350.0),
+        "the panel stays wide while the recent lines are still within the visibility hold"
     );
 
-    // Committing an action (leaving PlayerTurn, e.g. Fight → Targeting) clears it.
+    // Committing an action (leaving PlayerTurn, e.g. Fight → Targeting) clears the
+    // lines *and* the hold, so the panel collapses back to the action-menu width.
     set_phase(&mut app, TurnPhase::Targeting);
     assert_eq!(
         log_child_count(&mut app),
         0,
         "the log clears when the player commits an action"
+    );
+    assert_eq!(
+        panel_width(&mut app),
+        Val::Px(200.0),
+        "clearing the log drops the hold, restoring the menu width"
     );
 }
 

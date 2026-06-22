@@ -17,6 +17,24 @@ use crate::state::GameState;
 
 use super::{UiConfig, log_showing};
 
+/// Minimum wall-clock time a freshly written log line is kept on screen before
+/// [`swap_panel_for_phase`] is allowed to hide the panel. Without this, a line
+/// written right around a `PlayerTurn` transition (e.g. the player's own attack,
+/// or a one-attacker enemy turn that resolves in a couple of frames) would flash
+/// for only a few frames before the panel hides. Real time, so it's independent
+/// of game pacing.
+const LOG_VISIBLE_HOLD: f32 = 1.5;
+
+/// Tracks how long ago the most recent log line was written, in [`Time<Real>`]
+/// seconds-since-startup. [`swap_panel_for_phase`] keeps the log shown while the
+/// elapsed time since this stamp is under [`LOG_VISIBLE_HOLD`].
+#[derive(Resource, Debug, Default)]
+pub struct LogHold {
+    /// `Time::<Real>::elapsed_secs()` at the last line write; `None` until the
+    /// first line of the current battle is logged.
+    last_write: Option<f32>,
+}
+
 /// Colour of a battle-log line.
 const LOG_TEXT_COLOR: Color = Color::srgb(0.9, 0.9, 0.9);
 /// Dimmer colour for the close hint, so it reads as a footnote, not a log line.
@@ -138,6 +156,8 @@ pub fn spawn_battle_log(mut commands: Commands) {
 pub fn render_log_panel(
     mut commands: Commands,
     mut messages: MessageReader<LogMessage>,
+    time: Res<Time<Real>>,
+    mut hold: ResMut<LogHold>,
     container: Query<Entity, With<BattleLogContainer>>,
 ) {
     let Ok(container) = container.single() else {
@@ -145,6 +165,12 @@ pub fn render_log_panel(
         messages.clear();
         return;
     };
+    if messages.is_empty() {
+        return;
+    }
+    // Refresh the hold stamp so the panel stays visible at least LOG_VISIBLE_HOLD
+    // after this batch, even if the phase flips back to PlayerTurn next frame.
+    hold.last_write = Some(time.elapsed_secs());
     commands.entity(container).with_children(|panel| {
         for LogMessage(text) in messages.read() {
             panel.spawn((Text::new(format_log_line(text)), TextColor(LOG_TEXT_COLOR)));
@@ -165,6 +191,8 @@ pub fn swap_panel_for_phase(
     state: Res<State<TurnPhase>>,
     config: Res<UiConfig>,
     log_view: Res<LogView>,
+    time: Res<Time<Real>>,
+    hold: Res<LogHold>,
     mut panel: Query<&mut Node, With<ActionMenuPanel>>,
     mut menu_visibility: Query<
         &mut Visibility,
@@ -172,9 +200,15 @@ pub fn swap_panel_for_phase(
     >,
     mut log_visibility: Query<&mut Visibility, (With<BattleLogPanel>, Without<ActionMenuPanel>)>,
 ) {
-    // Show the log when the phase forces it (enemy turn / over) or the player has
-    // opened it from the menu.
-    let showing = log_showing(*state.get()) || log_view.open;
+    // Keep the log shown for at least LOG_VISIBLE_HOLD after the last line, so
+    // freshly written messages don't flash and vanish on a quick phase flip.
+    let within_hold = hold
+        .last_write
+        .is_some_and(|t| time.elapsed_secs() - t < LOG_VISIBLE_HOLD);
+
+    // Show the log when the phase forces it (enemy turn / over), the player has
+    // opened it from the menu, or a recent line is still inside its hold window.
+    let showing = log_showing(*state.get()) || log_view.open || within_hold;
 
     if let Ok(mut node) = panel.single_mut() {
         node.width = Val::Px(config.panel_width(showing));
@@ -224,8 +258,13 @@ pub fn toggle_log_hint(log_view: Res<LogView>, mut hint: Query<&mut Visibility, 
 /// `ClearMessages` → `ClearAndFreeChildren`).
 pub fn clear_log_on_player_action(
     mut commands: Commands,
+    mut hold: ResMut<LogHold>,
     container: Query<&Children, With<BattleLogContainer>>,
 ) {
+    // Drop the visibility hold along with the lines, so the panel collapses back
+    // to the action menu immediately instead of lingering empty. Any new line
+    // written this turn (e.g. the player's own attack) re-stamps the hold.
+    hold.last_write = None;
     let Ok(children) = container.single() else {
         return;
     };
