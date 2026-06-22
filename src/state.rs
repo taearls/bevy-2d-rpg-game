@@ -43,7 +43,7 @@ pub enum GameState {
 /// the debug-overlay entity inspector (which is modal while an entity is
 /// selected). In default/release/wasm builds nothing flips it, so it stays
 /// `false` and gameplay input is never gated. See
-/// [`debug_capturing_input`](Self::active) for the `run_if` condition.
+/// [`active`](Self::active) for the `run_if` condition.
 #[derive(Resource, Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct DebugInputCapture(pub bool);
 

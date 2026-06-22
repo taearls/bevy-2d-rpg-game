@@ -28,7 +28,7 @@ const LOG_VISIBLE_HOLD: f32 = 1.5;
 
 /// Tracks how long ago the most recent log line was written, in [`Time<Real>`]
 /// seconds-since-startup. [`swap_panel_for_phase`] keeps the log shown while the
-/// elapsed time since this stamp is under [`LOG_VISIBLE_HOLD`].
+/// elapsed time since this stamp is under `LOG_VISIBLE_HOLD`.
 #[derive(Resource, Debug, Default)]
 pub struct LogHold {
     /// `Time::<Real>::elapsed_secs()` at the last line write; `None` until the
