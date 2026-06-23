@@ -12,6 +12,7 @@
 use bevy::prelude::*;
 
 use crate::components::{Enemy, Health, Player, Targeted};
+use crate::state::DebugInputCapture;
 
 use super::spawn::BattleLayout;
 use super::state::TurnPhase;
@@ -254,6 +255,7 @@ fn set_target(commands: &mut Commands, selected: &mut SelectedTarget, next: Opti
 pub fn on_enemy_clicked(
     click: On<Pointer<Click>>,
     state: Res<State<TurnPhase>>,
+    capture: Res<DebugInputCapture>,
     mut commands: Commands,
     mut selected: ResMut<SelectedTarget>,
     mut attacks: MessageWriter<AttackRequested>,
@@ -261,6 +263,12 @@ pub fn on_enemy_clicked(
     player: Query<Entity, With<Player>>,
     enemies: Query<(Entity, &Enemy, &Health)>,
 ) {
+    // The debug inspector's global click observer runs before this entity
+    // observer (Bevy fires global observers first) and sets the capture flag on
+    // the opening click, so an inspect-click never doubles as an attack.
+    if capture.0 {
+        return;
+    }
     if *state.get() != TurnPhase::Targeting {
         return;
     }

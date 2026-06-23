@@ -111,11 +111,12 @@ fn full_stack_spawns_seeded_battle_and_runs_ten_frames() {
 }
 
 /// The debug plugin is a no-op without a `RenderApp`: on a headless `MinimalPlugins`
-/// app it must build and run frames without pulling in `EguiPlugin` (which needs
-/// the renderer) and without panicking. This locks in the `get_sub_app(RenderApp)`
-/// early-return that keeps `cargo test --features debug-inspector` green; only
-/// compiled when the feature is on, since the debug plugin is otherwise absent.
-#[cfg(feature = "debug-inspector")]
+/// app it must build and run frames without pulling in `FpsOverlayPlugin` (whose
+/// frame-time-graph setup needs render-only assets) and without panicking. This
+/// locks in the `get_sub_app(RenderApp)` early-return that keeps
+/// `cargo test --features debug-overlay` green; only compiled when the feature is
+/// on, since the debug plugin is otherwise absent.
+#[cfg(feature = "debug-overlay")]
 #[test]
 fn debug_plugin_is_noop_when_headless() {
     let mut app = App::new();

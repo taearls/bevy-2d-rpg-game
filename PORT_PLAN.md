@@ -183,10 +183,14 @@ from the original to its Bevy implementation. Status: **all phases complete.**
 | Dynamic enemy labels + target highlight | `refresh_enemy_labels` / `update_enemy_label_highlight` | ✅ |
 | World-space enemy mini HP bars | `EnemyHealthBar` track + scaled fill, `sync_enemy_health_bars` | ✅ |
 | Battle log + menu↔log panel swap (200 ↔ 350 px) | `render_log_panel`, `swap_panel_for_phase`, `UiConfig` | ✅ |
-| Custom F12 debug inspector addon, `[Export(Range)]` knobs | `DebugPlugin` (`debug-inspector` feature): `EguiPlugin` + `WorldInspectorPlugin`, F12 toggle, `register_type` on `BattleLayout`/`UiConfig`/`Health`/`CombatStats`/`DamageVariance` | ✅ |
+| Custom F12 debug inspector addon | Diagnostics overlay (`debug-overlay` feature): Bevy's official `FpsOverlayPlugin` (`bevy_dev_tools`), an F12-toggled FPS / frame-time readout — see note below | ✅ |
 | GdUnit4 test suite | Headless `App` + pure unit tests across `tests/` and `src/`, `just ci` green | ✅ |
 
 **Intentional design departures** (documented in Context above, not parity gaps):
 the Godot signal bus is replaced by Bevy messages/observers, `Changed<T>`
-detection replaces the `HealthUpdated` signal, and `bevy-inspector-egui` replaces
-the bespoke inspector addon — same behaviour, idiomatic Bevy expression.
+detection replaces the `HealthUpdated` signal, and the bespoke Godot inspector
+addon is replaced by Bevy's official diagnostics overlay (`FpsOverlayPlugin`) —
+same dev-tooling intent, idiomatic Bevy expression. The original port used the
+`bevy-inspector-egui` community crate for this, but it shipped no Bevy
+0.19-compatible release, so the overlay swapped to the first-party `bevy_dev_tools`
+plugin and the egui dependency was dropped.

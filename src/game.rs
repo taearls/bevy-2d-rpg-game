@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use crate::progress::{PlayerProgress, seed_player_progress};
-use crate::state::GameState;
+use crate::state::{DebugInputCapture, GameState};
 
 /// Root plugin for the game: sets the clear color, initialises the top-level
 /// [`GameState`], spawns the shared 2D camera, and wires in the main-menu, map,
@@ -21,6 +21,7 @@ impl Plugin for GamePlugin {
         app.insert_resource(ClearColor(Color::srgb(0.18, 0.18, 0.24)))
             .init_state::<GameState>()
             .init_resource::<PlayerProgress>()
+            .init_resource::<DebugInputCapture>()
             .add_systems(Startup, spawn_camera)
             .add_systems(Update, seed_player_progress)
             .add_plugins((
@@ -31,10 +32,11 @@ impl Plugin for GamePlugin {
                 crate::battle::plugin,
             ));
 
-        // The egui debug inspector (right-click a sprite to inspect it) is
-        // compiled in only under the `debug-inspector` feature, so default/release
-        // builds and headless tests never link egui.
-        #[cfg(feature = "debug-inspector")]
+        // The diagnostics overlay (an F12-toggled FPS / frame-time readout, via
+        // Bevy's official `FpsOverlayPlugin`) is compiled in only under the
+        // `debug-overlay` feature, so default/release builds and headless tests
+        // never pull in `bevy_dev_tools`.
+        #[cfg(feature = "debug-overlay")]
         app.add_plugins(crate::debug::plugin);
     }
 }

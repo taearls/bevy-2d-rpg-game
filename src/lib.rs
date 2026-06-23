@@ -8,7 +8,7 @@ pub mod battle;
 pub mod characters;
 pub mod combat;
 pub mod components;
-#[cfg(feature = "debug-inspector")]
+#[cfg(feature = "debug-overlay")]
 pub mod debug;
 pub mod game;
 pub mod game_over;

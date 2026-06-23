@@ -26,6 +26,14 @@ issues remain.
 
 ### Recently Completed
 
+- ✅ Post-port: replaced the egui debug inspector with Bevy's **official
+  diagnostics overlay** — `debug/mod.rs` now wires `FpsOverlayPlugin` (from
+  `bevy_dev_tools`), an F12-toggled FPS / frame-time readout, behind a renamed
+  `debug-overlay` cargo feature. `bevy-inspector-egui` had no Bevy 0.19 release,
+  so the third-party egui dependency is dropped entirely; `just run-debug` runs
+  the overlay again. The plugin stays a no-op without a `RenderApp`, so headless
+  tests stay green. (The Phase 8 entry below describes the original egui
+  inspector it superseded.)
 - ✅ [#8 — Phase 8: Debug inspector (bevy-inspector-egui) + polish](../../issues/8) —
   a `debug/mod.rs` `DebugPlugin` behind the `debug-inspector` cargo feature wiring
   `EguiPlugin::default()` + `WorldInspectorPlugin` (bevy-inspector-egui 0.36 / the

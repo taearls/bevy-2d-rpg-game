@@ -4,14 +4,10 @@
 run:
     cargo run
 
-# Run the game with the egui debug inspector (right-click a sprite to inspect).
-# TODO(bevy 0.19): temporarily disabled — bevy-inspector-egui has no Bevy 0.19
-# release yet, so the `debug-inspector` feature is commented out in Cargo.toml.
-# Restore the body to `cargo run --features debug-inspector` once it ships.
+# Run the game with the diagnostics overlay (Bevy's official FpsOverlayPlugin —
+# an FPS / frame-time readout). Press F12 in-game to toggle it on and off.
 run-debug:
-    @echo "The debug inspector is temporarily disabled during the Bevy 0.19 migration"
-    @echo "(bevy-inspector-egui has no 0.19-compatible release yet). See Cargo.toml."
-    @exit 1
+    cargo run --features debug-overlay
 
 # Run with Bevy dynamic linking for the fastest iterative dev builds.
 run-fast:

@@ -33,3 +33,25 @@ pub enum GameState {
     InBattle,
     GameOver,
 }
+
+/// Whether a debug tool is currently capturing keyboard input, in which case
+/// gameplay input (the battle menu, targeting, …) is suppressed so the two don't
+/// both act on the same keypress.
+///
+/// Always compiled, in every build, so gameplay code can gate on it without a
+/// `#[cfg(feature = "debug-overlay")]` dance — but it is only ever *set* true by
+/// the debug-overlay entity inspector (which is modal while an entity is
+/// selected). In default/release/wasm builds nothing flips it, so it stays
+/// `false` and gameplay input is never gated. See
+/// [`active`](Self::active) for the `run_if` condition.
+#[derive(Resource, Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct DebugInputCapture(pub bool);
+
+impl DebugInputCapture {
+    /// `run_if` condition: true while a debug tool owns the keyboard. Gameplay
+    /// input systems gate on its negation (`not(DebugInputCapture::active)`).
+    #[must_use]
+    pub fn active(capture: Res<Self>) -> bool {
+        capture.0
+    }
+}

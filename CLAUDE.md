@@ -24,7 +24,14 @@ just format         # cargo fmt
 
 Gate every change on `just ci` locally and rely on its **exit code** (see "CI" below). To run a single test: `cargo test <name>` (e.g. `cargo test --test battle_flow`, or `cargo test compute_damage`).
 
-`just run-debug` is intentionally a **no-op that exits 1**: the egui debug inspector (`debug-inspector` feature + `bevy-inspector-egui`) is disabled until that crate ships a Bevy 0.19 release. The `#[cfg(feature = "debug-inspector")]` gates throughout the source are kept in place so the feature restores in one step — leave them as-is.
+`just run-debug` launches with two debug tools, both gated behind the `debug-overlay` cargo feature (`src/debug/`):
+
+1. **Diagnostics overlay** (`src/debug/mod.rs`) — Bevy's official `FpsOverlayPlugin` (from `bevy_dev_tools`) showing an FPS readout, plus a custom `debug/frame_counter` `Diagnostic` rendered in a `Text` node beneath it. Toggled in-game with **F12**. The graph half of `FpsOverlayPlugin` (`FrameTimeGraphConfig.enabled`) is turned **off** — its custom-material shader renders as a solid red block on the Metal backend, and only the numbers are wanted.
+2. **Entity inspector** (`src/debug/inspector.rs`) — an egui-free, in-window stat editor. **Click** a combatant sprite to select it (a debug-only system inserts `Pickable` onto any entity with `Health`, so the player — which has no `Pickable` in gameplay code — is also clickable); the top-right panel lists its gameplay stats. **Tab**/**Shift+Tab** move the field cursor, **+/-** (or arrows) edit, **Shift** ×10, **Esc** closes. The editable allow-list is *gameplay only* (`Health`, `CombatStats`, `DamageVariance`) with clamping — never Bevy internals like `Transform`/`Sprite`. Selection ignores propagated ancestor hits (`Pointer<Click>` is an auto-propagating `EntityEvent`) by accepting only entities that carry an editable component.
+
+   The inspector is **modal**: while an entity is selected it owns the keyboard, and battle input is mutually excluded so a keypress (or click) never acts on both. This rides on `DebugInputCapture` (`src/state.rs`) — an **always-compiled** `bool` resource, default `false` and only ever set by the inspector, so gameplay can gate on it without a `#[cfg]` dance and it's a no-op in default/release/wasm builds. The whole `BattleSet::Input` set is gated `run_if(not(DebugInputCapture::active))` (Resolve/Cleanup/Ui keep running, so HP bars and the log still redraw as stats change live). The inspector's *global* click observer sets the flag synchronously; because Bevy fires global observers before entity observers, the enemy's `on_enemy_clicked` entity observer (which early-returns on the flag) sees it already set, so an inspect-click during the `Targeting` phase never doubles as an attack. `sync_input_capture` clears the flag when the selection is dropped (Esc or despawn).
+
+Both replaced the earlier `bevy-inspector-egui` community inspector, which had no Bevy 0.19 release — the egui dependency is gone. The overlay plugin is a no-op without a `RenderApp` (so headless `--features debug-overlay` tests stay green); the whole module is `#[cfg(feature = "debug-overlay")]` so default/release/wasm builds and tests never link `bevy_dev_tools`.
 
 ### Deterministic spawns
 
@@ -71,6 +78,13 @@ Input → Resolve → Cleanup → Ui
 ```
 
 The whole chain is `.chain().run_if(in_state(GameState::InBattle))`. `Input` queues `AttackRequested` messages; `Resolve` (`apply_attacks`) applies them and emits `DamageDealt`; `Cleanup` (`check_battle_end`) runs **only `on_message::<DamageDealt>`** — gating on the message rather than the state prevents a *cancelled* targeting from being wrongly pushed into EnemyTurn/BattleOver; `Ui` redraws cursor/HP-bars/log from world state. Combat is event-driven: producers (targeting, enemy turn) write `AttackRequested`; consumers read `DamageDealt`.
+
+### Battle log (two views) (`src/battle/ui/battle_log.rs`)
+
+`LogMessage`s feed **two** on-screen views, both fed off the same message stream (each system has its own `MessageReader` cursor):
+
+- **Recent-lines box** (`BattleLogContainer`) — the auto-show during the enemy turn / battle-over (and the player's last attack), cleared each time the player commits an action (`clear_log_on_player_action`, `OnExit(PlayerTurn)`) so it only ever holds the last turn. To keep a freshly written line from flashing on a quick phase flip, `swap_panel_for_phase` holds the panel visible for ≥`LOG_VISIBLE_HOLD` (1.5s, wall-clock via `Time<Real>`) after the last write, tracked in `LogHold`; committing an action drops the lines *and* the hold.
+- **Full history** (the menu's `Log` command) — a `BattleHistory` resource accumulates **every** line of the fight (reset `OnEnter(InBattle)`), rendered into a scrollable `HistoryViewport` (`HistoryContainer` inner column) shown only while `LogView::open`. The viewport uses **`max_height` + `Overflow::scroll_y`** so it hugs short content and caps + scrolls when long, and is toggled with **`Node.display`** (not `Visibility`) so a closed viewport takes no layout space (a hidden-but-laid-out node would shift the recent box). `manage_history_view` (Ui set) swaps the two boxes and rebuilds the lines on change, requesting a snap-to-bottom; `scroll_history` (Input set, `PlayerTurn`) does keyboard (Up/Down, PageUp/PageDown) + mouse-wheel scrolling and the deferred snap. **Scroll bounds come from the measured `ComputedNode`** (`content_size` minus the inner area inside padding/border, physical→logical via `inverse_scale_factor`), never a line-count estimate — so the bottom line lands fully visible regardless of font/padding.
 
 ### Combat is split for testability
 
