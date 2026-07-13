@@ -26,7 +26,7 @@ fn headless_app() -> App {
     app
 }
 
-fn goblin_def(max_health: i32, attack: i32, defense: i32, variance: (f32, f32)) -> CharacterDef {
+fn goblin_def(max_health: i32, attack: i32, defense: i32) -> CharacterDef {
     CharacterDef {
         display_name: "Goblin".to_string(),
         sprite: "sprites/enemy.png".to_string(),
@@ -35,10 +35,8 @@ fn goblin_def(max_health: i32, attack: i32, defense: i32, variance: (f32, f32)) 
             attack,
             defense,
         },
-        damage_variance: DamageVarianceDef {
-            min: variance.0,
-            max: variance.1,
-        },
+        // Single canonical variance pair, matching the hero and both RON assets.
+        damage_variance: DamageVarianceDef { min: 0.8, max: 1.2 },
     }
 }
 
@@ -115,13 +113,10 @@ fn spawns_enemies_with_correct_stats_indices_and_spacing() {
         enemy_y: 40.0,
         ..BattleLayout::default()
     };
-    // Non-default variances (and distinct per entry) so the assertion below
-    // genuinely guards the `bsn!` `damage_variance` wiring — a bare
-    // `DamageVariance` (falling back to the 0.8/1.2 default) would fail it.
     let entries = vec![
-        entry("Goblin A", goblin_def(80, 10, 4, (0.5, 1.5))),
-        entry("Goblin B", goblin_def(80, 10, 4, (0.6, 1.4))),
-        entry("Slime", goblin_def(50, 8, 2, (0.7, 1.3))),
+        entry("Goblin A", goblin_def(80, 10, 4)),
+        entry("Goblin B", goblin_def(80, 10, 4)),
+        entry("Slime", goblin_def(50, 8, 2)),
     ];
     let expected = entries.clone();
 
@@ -160,6 +155,35 @@ fn spawns_enemies_with_correct_stats_indices_and_spacing() {
         assert_close(pos.x, -300.0 + i as f32 * 120.0);
         assert_close(pos.y, 40.0);
     }
+}
+
+/// The enemy `bsn!` scene reads `damage_variance` from the def, not from
+/// `DamageVariance::default()`. Proven with a deliberately non-default pair: a
+/// bare `DamageVariance` in the scene would spawn the 0.8/1.2 default and fail
+/// this assertion. (The canonical roster shares the default pair, which can't
+/// distinguish the two on its own — hence this focused case.)
+#[test]
+fn enemy_spawn_reads_damage_variance_from_def() {
+    let mut app = headless_app();
+    let layout = BattleLayout::default();
+    let mut def = goblin_def(80, 10, 4);
+    def.damage_variance = DamageVarianceDef { min: 0.5, max: 1.5 };
+    let entries = vec![entry("Goblin", def)];
+
+    app.world_mut()
+        .run_system_once(
+            move |mut commands: Commands, asset_server: Res<AssetServer>| {
+                spawn_enemies(&mut commands, &asset_server, &layout, &entries);
+            },
+        )
+        .unwrap();
+
+    let mut q = app
+        .world_mut()
+        .query_filtered::<&DamageVariance, With<Enemy>>();
+    let variance = q.single(app.world()).unwrap();
+    assert_close(variance.min, 0.5);
+    assert_close(variance.max, 1.5);
 }
 
 #[test]
