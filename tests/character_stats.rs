@@ -94,3 +94,31 @@ fn character_def_round_trips_through_ron() {
     let restored: CharacterDef = ron::from_str(&serialized).unwrap();
     assert_eq!(original, restored);
 }
+
+/// The RON assets are the source of truth: with the serde defaults removed, a
+/// template that omits any stat field must now fail to deserialize rather than
+/// silently fall back. This locks in the no-defaults contract.
+#[test]
+fn character_def_rejects_missing_stat_field() {
+    // `attack` is omitted from `stats` — previously it defaulted to 10.
+    let result: Result<CharacterDef, _> = ron::from_str(
+        r#"(display_name: "Goblin", sprite: "sprites/enemy.png", stats: (max_health: 80, defense: 4), damage_variance: (min: 0.8, max: 1.2))"#,
+    );
+    assert!(
+        result.is_err(),
+        "a template missing a stat field must not deserialize now that defaults are gone"
+    );
+}
+
+/// A template omitting the whole `damage_variance` block must also fail — the
+/// new field is required, not defaulted.
+#[test]
+fn character_def_rejects_missing_damage_variance() {
+    let result: Result<CharacterDef, _> = ron::from_str(
+        r#"(display_name: "Goblin", sprite: "sprites/enemy.png", stats: (max_health: 80, attack: 10, defense: 4))"#,
+    );
+    assert!(
+        result.is_err(),
+        "a template missing damage_variance must not deserialize"
+    );
+}

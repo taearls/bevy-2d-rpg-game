@@ -26,7 +26,7 @@ fn headless_app() -> App {
     app
 }
 
-fn goblin_def(max_health: i32, attack: i32, defense: i32) -> CharacterDef {
+fn goblin_def(max_health: i32, attack: i32, defense: i32, variance: (f32, f32)) -> CharacterDef {
     CharacterDef {
         display_name: "Goblin".to_string(),
         sprite: "sprites/enemy.png".to_string(),
@@ -35,7 +35,10 @@ fn goblin_def(max_health: i32, attack: i32, defense: i32) -> CharacterDef {
             attack,
             defense,
         },
-        damage_variance: DamageVarianceDef { min: 0.8, max: 1.2 },
+        damage_variance: DamageVarianceDef {
+            min: variance.0,
+            max: variance.1,
+        },
     }
 }
 
@@ -112,10 +115,13 @@ fn spawns_enemies_with_correct_stats_indices_and_spacing() {
         enemy_y: 40.0,
         ..BattleLayout::default()
     };
+    // Non-default variances (and distinct per entry) so the assertion below
+    // genuinely guards the `bsn!` `damage_variance` wiring — a bare
+    // `DamageVariance` (falling back to the 0.8/1.2 default) would fail it.
     let entries = vec![
-        entry("Goblin A", goblin_def(80, 10, 4)),
-        entry("Goblin B", goblin_def(80, 10, 4)),
-        entry("Slime", goblin_def(50, 8, 2)),
+        entry("Goblin A", goblin_def(80, 10, 4, (0.5, 1.5))),
+        entry("Goblin B", goblin_def(80, 10, 4, (0.6, 1.4))),
+        entry("Slime", goblin_def(50, 8, 2, (0.7, 1.3))),
     ];
     let expected = entries.clone();
 
@@ -146,7 +152,8 @@ fn spawns_enemies_with_correct_stats_indices_and_spacing() {
         assert_eq!(hp.max, expected[i].def.stats.max_health);
         assert_eq!(stats.attack, expected[i].def.stats.attack);
         assert_eq!(stats.defense, expected[i].def.stats.defense);
-        assert_eq!(**variance, DamageVariance::default());
+        assert_close(variance.min, expected[i].def.damage_variance.min);
+        assert_close(variance.max, expected[i].def.damage_variance.max);
 
         // Horizontal spacing: x = start_x + i * spacing, shared row Y.
         let pos = transform.translation.truncate();
