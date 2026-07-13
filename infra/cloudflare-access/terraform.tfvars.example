@@ -1,0 +1,16 @@
+# Copy to `terraform.tfvars` and fill in real values. `terraform.tfvars` is
+# gitignored (it contains your account ID and allow-list) — do not commit it.
+
+# Cloudflare account ID (same as the CLOUDFLARE_ACCOUNT_ID GitHub Actions secret).
+account_id = "your-cloudflare-account-id"
+
+# The allow-list. Only these addresses can reach the site.
+allowed_emails = [
+  "you@example.com",
+  # "teammate@example.com",
+]
+
+# Optional overrides (defaults shown):
+# app_domain       = "aliasing.pages.dev"
+# app_name         = "aliasing"
+# session_duration = "24h"

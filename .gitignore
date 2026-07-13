@@ -3,3 +3,19 @@
 battle.seed
 .playwright-mcp/
 .wrangler/
+
+# Terraform (infra/) — state can contain secrets (account ID, allow-list); the
+# lockfile and provider plugins are environment-specific. Never commit these.
+**/.terraform/
+**/.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+crash.log
+*.tfvars
+!*.tfvars.example
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc

@@ -38,14 +38,14 @@ sent to Cloudflare's login page, receive a one-time code by email, and are only
 let through if their address is on the policy. No game files are served to
 unauthenticated visitors.
 
-Live at **`https://bevy-2d-rpg-game.pages.dev`** — unauthenticated visitors are
+Live at **`https://aliasing.pages.dev`** — unauthenticated visitors are
 redirected to Cloudflare's login instead of the game.
 
 > **Deployment configuration** (already set up — kept here for reference and
 > for managing the allow-list):
 >
 > 1. **Pages project** — a Cloudflare Pages project (Direct Upload / Wrangler)
->    named `bevy-2d-rpg-game` (matching [`wrangler.toml`](wrangler.toml)).
+>    named `aliasing` (matching [`wrangler.toml`](wrangler.toml)).
 > 2. **GitHub secrets** (**Settings → Secrets and variables → Actions**):
 >    `CLOUDFLARE_API_TOKEN` (a token with the *Cloudflare Pages: Edit*
 >    permission) and `CLOUDFLARE_ACCOUNT_ID`. The
@@ -55,13 +55,16 @@ redirected to Cloudflare's login instead of the game.
 >    - **Settings → Authentication → Login methods** has **One-time PIN**
 >      enabled (emails a code; no identity provider needed).
 >    - **Access → Applications** has a **Self-hosted** application whose domain
->      is `bevy-2d-rpg-game.pages.dev`.
+>      is `aliasing.pages.dev`.
 >    - Its policy is **Action: Allow**, **Include → Emails →** the allow-listed
 >      address(es). Access denies everyone not matched. **To share access add an
 >      email to that policy; to revoke, remove one.**
 >
 > This is real per-user authentication: access is tied to an email you control
 > and can be revoked at any time by editing the policy.
+>
+> The Access application + allow-list can also be managed as code with Terraform
+> instead of the dashboard — see [`infra/cloudflare-access/`](infra/cloudflare-access/).
 
 To build or serve the web version locally you need the wasm target and
 [`trunk`](https://trunkrs.dev):

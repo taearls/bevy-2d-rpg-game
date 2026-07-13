@@ -4,6 +4,6 @@
 # Wrangler uploads it. Access control is handled by Cloudflare Access (Zero
 # Trust), configured in the Cloudflare dashboard rather than in this repo — see
 # the "Play in the browser" section of the README. There is no in-repo gate.
-name = "bevy-2d-rpg-game"
+name = "aliasing"
 compatibility_date = "2026-06-17"
 pages_build_output_dir = "dist"

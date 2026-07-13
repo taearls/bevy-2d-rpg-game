@@ -53,5 +53,5 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           # Project name and output dir come from wrangler.toml
-          # (name = "bevy-2d-rpg-game", pages_build_output_dir = "dist").
+          # (name = "aliasing", pages_build_output_dir = "dist").
           command: pages deploy
