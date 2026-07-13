@@ -1,9 +1,9 @@
 //! Deterministic RNG resources.
 //!
-//! Two `ChaCha8Rng`-backed resources mirror the Godot design: `SpawnRng`
-//! (optionally pinned by `battle.seed` so a roster reproduces exactly) and
-//! `DamageRng` (entropy-seeded at runtime, fixed-seed in tests so damage
-//! variance is assertable). `ChaCha8Rng` is used over `rand`'s default PRNG
+//! Two `ChaCha8Rng`-backed resources: `SpawnRng` (optionally pinned by
+//! `battle.seed` so a roster reproduces exactly) and `DamageRng` (entropy-seeded
+//! at runtime, fixed-seed in tests so damage variance is assertable).
+//! `ChaCha8Rng` is used over `rand`'s default PRNG
 //! because it guarantees a stable byte stream across `rand` releases — a pinned
 //! seed keeps producing the same battle after a dependency bump.
 

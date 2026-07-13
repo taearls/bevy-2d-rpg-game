@@ -1,4 +1,4 @@
-//! Headless combat-resolution coverage, mirroring the Godot `BattleEventsTest`.
+//! Headless combat-resolution coverage.
 //!
 //! Builds a minimal `App` with just the combat plumbing — the `AttackRequested`
 //! / `DamageDealt` messages, the `Died` observer, a fixed-seed `DamageRng`, and
@@ -6,7 +6,7 @@
 //! ECS facts: the `DamageDealt` stream, mutated `Health`, the `Died`-driven
 //! `Visibility::Hidden`, and the "nothing happens" cases. No renderer or asset
 //! loading: attacker/target entities are spawned with their stats injected
-//! directly, exactly as the `GdUnit4` originals fabricated `BattleCharacter`s.
+//! directly.
 
 use bevy::prelude::*;
 use bevy::state::app::StatesPlugin;
@@ -161,9 +161,8 @@ fn lethal_attack_triggers_died_and_hides_sprite() {
 
 /// An attacker with non-positive effective attack still floors to 1 — but an
 /// attack from an entity with `attack <= 0` deals 0 per `compute_damage`, so the
-/// target is untouched and a `DamageDealt` of 0 is the only signal. This mirrors
-/// the `BattleEventsTest` "zero attack emits nothing meaningful" case: zero
-/// attack ⇒ zero damage.
+/// target is untouched and a `DamageDealt` of 0 is the only signal — the "zero
+/// attack emits nothing meaningful" case: zero attack ⇒ zero damage.
 #[test]
 fn zero_attack_deals_no_damage() {
     let mut app = combat_app();

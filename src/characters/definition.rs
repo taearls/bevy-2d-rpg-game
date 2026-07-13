@@ -3,9 +3,7 @@
 //! These are the data-driven roster definitions loaded from RON assets
 //! (`assets/characters/*.character.ron`) via the [`asset_loader`]. The RON
 //! files are the source of truth: every field must be specified explicitly —
-//! there are no serde defaults. `attack`/`defense` mirror the Godot
-//! `CombatStats.cs` exports; `max_health` is tuned down from Godot's 100.
-//! `damage_variance` mirrors the Godot `BattleCharacter` min/max exports.
+//! there are no serde defaults.
 //!
 //! [`asset_loader`]: super::asset_loader
 
@@ -34,7 +32,7 @@ pub struct DamageVarianceDef {
 /// A named, data-driven character template (the player or an enemy archetype),
 /// loaded from a `*.character.ron` asset. `sprite` is the asset path of the
 /// character's texture, relative to the `assets/` root (e.g.
-/// `"sprites/hero.png"`), mirroring the Godot `CharacterData.Sprite` export.
+/// `"sprites/hero.png"`).
 #[derive(Asset, TypePath, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CharacterDef {
     pub display_name: String,

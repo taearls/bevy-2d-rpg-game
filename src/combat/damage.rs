@@ -11,11 +11,8 @@
 ///   in `[0.8, 1.2]`), with the result floored at `1` so every connecting hit
 ///   chips at least one point of health.
 ///
-/// **Deliberate divergence from the Godot original:** the C# `BattleCharacter`
-/// computed `(int)(baseDamage * variance)`, truncating toward zero. This port
-/// rounds to the nearest integer (`.round()`) per the Phase 2 spec, so a given
-/// `(attack, defense, variance)` can land one point higher here than in Godot.
-/// The behaviour is otherwise identical.
+/// The scaled damage rounds to the nearest integer (`.round()`) per the Phase 2
+/// spec.
 #[must_use]
 pub fn compute_damage(attack: i32, defense: i32, variance: f32) -> i32 {
     if attack <= 0 {

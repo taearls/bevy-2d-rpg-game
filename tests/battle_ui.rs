@@ -1,5 +1,4 @@
-//! Headless HUD + battle-log coverage, the Bevy analogue of the Godot
-//! `BattleUITest`.
+//! Headless HUD + battle-log coverage.
 //!
 //! Every assertion is an ECS fact — `Text` contents, `Node.width`, a child
 //! count, a `TextColor`, a `Transform.scale` — never a pixel. The real UI
@@ -173,7 +172,7 @@ fn damage(app: &mut App, entity: Entity, amount: i32) {
 }
 
 /// Damage moves the player HP fill width and the "(defeated)" suffix appears at
-/// zero HP (`BattleUITest` fill-percent + defeated-label parity).
+/// zero HP (fill-percent + defeated-label coverage).
 #[test]
 fn player_hud_reflects_damage_and_defeat() {
     let (mut app, _enemies, player) = ui_app(&[100]);
@@ -196,7 +195,7 @@ fn player_hud_reflects_damage_and_defeat() {
 }
 
 /// The alive-enemy label count drops when an enemy is defeated
-/// (`BattleUITest` label-count parity).
+/// (label-count coverage).
 #[test]
 fn enemy_label_count_drops_on_death() {
     let (mut app, enemies, _player) = ui_app(&[100, 100, 100]);

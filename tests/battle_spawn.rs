@@ -1,4 +1,4 @@
-//! Headless spawn coverage, mirroring the Godot `BattleSceneTest` spawn cases.
+//! Headless spawn coverage.
 //!
 //! Stats are injected directly (the issue's "stats injected directly" note):
 //! these tests drive `spawn_player` / `spawn_enemies` against a minimal `App`

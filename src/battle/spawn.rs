@@ -1,12 +1,11 @@
 //! Battle spawning: rolls a random enemy roster and places the player and
 //! enemies into the world.
 //!
-//! Mirrors the Godot `BattleScene.SpawnEnemies` flow: seed an RNG (pinned from
-//! `battle.seed` when present, else entropy), roll 1..=`MAX_ENEMIES` enemies
-//! from the roster, suffix duplicate display names, and lay the enemies out in a
-//! horizontal row from [`BattleLayout`]. The roll itself ([`roll_roster`]) is a
-//! pure function over the RNG and roster so it can be asserted headlessly
-//! without spawning entities or loading assets.
+//! Seed an RNG (pinned from `battle.seed` when present, else entropy), roll
+//! 1..=`MAX_ENEMIES` enemies from the roster, suffix duplicate display names, and
+//! lay the enemies out in a horizontal row from [`BattleLayout`]. The roll itself
+//! ([`roll_roster`]) is a pure function over the RNG and roster so it can be
+//! asserted headlessly without spawning entities or loading assets.
 
 use bevy::prelude::*;
 use rand::Rng;
@@ -26,12 +25,12 @@ use super::ui::hud::{
 };
 
 /// Maximum number of enemies a battle can spawn. The count is rolled inclusively
-/// in `1..=MAX_ENEMIES`, matching Godot `RandiRange(1, MaxEnemies)`.
+/// in `1..=MAX_ENEMIES`.
 pub const MAX_ENEMIES: usize = 4;
 
 /// Horizontal row layout for the enemy lineup, in Bevy world units (Y-up,
 /// origin at the window centre). The player sits at [`Self::player`]. These are
-/// the knobs the Phase 8 inspector tunes (Godot `[Export(Range)]` parity).
+/// the knobs the Phase 8 inspector tunes.
 #[derive(Resource, Reflect, Debug, Clone, Copy, PartialEq)]
 #[reflect(Resource)]
 pub struct BattleLayout {
@@ -50,8 +49,8 @@ pub struct BattleLayout {
 
 impl Default for BattleLayout {
     fn default() -> Self {
-        // Enemies fill a row on the left, player faces them from the right —
-        // the Godot scene's arrangement translated into Bevy's centred space.
+        // Enemies fill a row on the left, player faces them from the right, in
+        // Bevy's centred space.
         Self {
             enemy_start_x: -400.0,
             enemy_spacing: 150.0,
@@ -85,9 +84,8 @@ pub struct RosterEntry {
 ///
 /// Picks a count in `1..=MAX_ENEMIES`, then that many templates uniformly (with
 /// replacement), then disambiguates duplicate display names ("Goblin A/B/…").
-/// Returns an empty `Vec` when `roster` is empty — no count is rolled, matching
-/// Godot's early return on an empty `EnemyStatsList` so the RNG stream is
-/// untouched.
+/// Returns an empty `Vec` when `roster` is empty — no count is rolled, so the RNG
+/// stream is untouched.
 ///
 /// Pure over `(rng, roster)`: the same seeded `ChaCha8Rng` and roster always
 /// yield the same result, which is what the headless spawn tests assert.
@@ -117,7 +115,6 @@ pub fn roll_roster(rng: &mut ChaCha8Rng, roster: &[CharacterDef]) -> Vec<RosterE
 
 /// Build a [`SpawnRng`] for this battle: pinned from `battle.seed` when that
 /// file holds a valid integer, otherwise entropy-seeded for a fresh roll.
-/// Mirrors Godot `LoadSeededRng`.
 #[must_use]
 pub fn spawn_rng_from_environment() -> SpawnRng {
     read_seed_file().map_or_else(SpawnRng::from_entropy, SpawnRng::from_seed)
@@ -210,8 +207,7 @@ pub fn spawn_player(
     let max = def.stats.max_health;
     commands.spawn((
         Player,
-        // Mirror horizontally so the hero faces the enemies on the left, matching
-        // the Godot `HeroSprite` `flip_h = true`.
+        // Mirror horizontally so the hero faces the enemies on the left.
         Sprite {
             flip_x: true,
             ..Sprite::from_image(asset_server.load(def.sprite.clone()))
@@ -374,7 +370,7 @@ mod tests {
     }
 
     /// Rolled count always lands in the inclusive `1..=MAX_ENEMIES` band across
-    /// many seeds (parity with Godot `RandiRange(1, MaxEnemies)`).
+    /// many seeds.
     #[test]
     fn rolled_count_is_within_one_to_max() {
         let roster = goblin_roster();
@@ -448,8 +444,7 @@ mod tests {
         assert_eq!(roll_roster(&mut a, &roster), roll_roster(&mut b, &roster));
     }
 
-    /// An empty roster spawns nothing and leaves the RNG stream untouched
-    /// (Godot's early return on an empty `EnemyStatsList`).
+    /// An empty roster spawns nothing and leaves the RNG stream untouched.
     #[test]
     fn empty_roster_rolls_nothing() {
         let mut rng = ChaCha8Rng::seed_from_u64(99);

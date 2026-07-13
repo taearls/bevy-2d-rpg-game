@@ -1,12 +1,11 @@
 //! The on-screen battle log and the menu↔log panel swap.
 //!
-//! Bevy port of the Godot `BattleUI` log half. Log lines arrive as
-//! [`LogMessage`]s (the same stream the stdout logger drains); each is spawned as
-//! a `Text` child of [`BattleLogContainer`]. The centre panel widens from the
-//! action-menu width to the wider battle-log width while the log is showing —
-//! during the enemy turn and after the battle ends — and the menu / log swap
-//! visibility accordingly. `OnEnter(PlayerTurn)` clears the log and restores the
-//! menu, mirroring the Godot `ShowActionMenu` teardown.
+//! Log lines arrive as [`LogMessage`]s (the same stream the stdout logger
+//! drains); each is spawned as a `Text` child of [`BattleLogContainer`]. The
+//! centre panel widens from the action-menu width to the wider battle-log width
+//! while the log is showing — during the enemy turn and after the battle ends —
+//! and the menu / log swap visibility accordingly. `OnEnter(PlayerTurn)` clears
+//! the log and restores the menu.
 
 use bevy::input::mouse::{MouseScrollUnit, MouseWheel};
 use bevy::prelude::*;
@@ -83,8 +82,8 @@ const LOG_HINT_FONT_SIZE: f32 = 12.0;
 /// The close-hint text shown only when the player opened the log via the menu.
 const LOG_HINT_TEXT: &str = "Esc/Enter to close";
 
-/// Background of the log panel — shares the Godot `action_menu_panel` style with
-/// the action menu it swaps in for (`bg_color = (0.12, 0.12, 0.16, 1)`).
+/// Background of the log panel — shares the panel style with the action menu it
+/// swaps in for (`bg_color = (0.12, 0.12, 0.16, 1)`).
 const LOG_PANEL_BG_COLOR: Color = Color::srgb(0.12, 0.12, 0.16);
 /// White 2px border matching the action-menu panel.
 const LOG_PANEL_BORDER_COLOR: Color = Color::WHITE;
@@ -94,9 +93,8 @@ const LOG_PANEL_BORDER_COLOR: Color = Color::WHITE;
 /// when swapped.
 const LOG_PANEL_BOTTOM_OFFSET: f32 = 0.0;
 
-/// The container that holds the battle-log lines (the Godot
-/// `_battleMessageContainer`). Spawned hidden alongside the action menu; shown
-/// while the log is active.
+/// The container that holds the battle-log lines. Spawned hidden alongside the
+/// action menu; shown while the log is active.
 ///
 /// `Default + Clone` so the `bsn!` macro can treat it as a `Template` (markers
 /// auto-derive `FromTemplate` from those two).
@@ -242,8 +240,7 @@ pub fn spawn_battle_log(mut commands: Commands) {
 }
 
 /// `BattleSet::Ui`: drain pending [`LogMessage`]s into `Text` children of the log
-/// container, so each logged line appears as one row. Mirrors Godot `LogMessage`
-/// instantiating a label per message into `_battleMessageContainer`.
+/// container, so each logged line appears as one row.
 pub fn render_log_panel(
     mut commands: Commands,
     mut messages: MessageReader<LogMessage>,
@@ -427,7 +424,7 @@ pub fn scroll_history(
 /// both cases the panel widens to the battle-log width and the action menu hides;
 /// otherwise it narrows to the action-menu width and the menu shows. Reading
 /// [`UiConfig`] every frame means a live inspector width edit still takes effect
-/// immediately. Mirrors Godot `ApplyCurrentPanelWidth` keyed off `_actionMenuActive`.
+/// immediately.
 pub fn swap_panel_for_phase(
     state: Res<State<TurnPhase>>,
     config: Res<UiConfig>,
@@ -495,8 +492,7 @@ pub fn toggle_log_hint(log_view: Res<LogView>, mut hint: Query<&mut Visibility, 
 /// overlay something to show: the enemy turn's lines (and the player's own last
 /// attack) persist until the player picks Fight/Items/Defend/Flee, all of which
 /// leave `PlayerTurn`. Opening the `Log` overlay does **not** leave `PlayerTurn`,
-/// so it never triggers this. Despawns the container's children (the Godot
-/// `ClearMessages` → `ClearAndFreeChildren`).
+/// so it never triggers this. Despawns the container's children.
 pub fn clear_log_on_player_action(
     mut commands: Commands,
     mut hold: ResMut<LogHold>,

@@ -2,8 +2,7 @@
 //! battle-state markers used across the `battle`, `combat`, and `map` features.
 //!
 //! These are plain data components consumed by the spawning, rendering, and
-//! combat systems in those modules. Mirrors the per-character fields of the
-//! Godot `BattleCharacter.cs` / `CombatStats.cs` originals.
+//! combat systems in those modules.
 
 use bevy::prelude::*;
 
@@ -14,7 +13,7 @@ pub struct Player;
 
 /// Marks an enemy combatant and records its slot in the spawned row. `index`
 /// runs `0..enemy_count` left-to-right and drives layout, enemy-turn ordering,
-/// and the Godot `EnemyIndex` parity used by targeting.
+/// and the target index used by targeting.
 ///
 /// `FromTemplate` lets it be written as `Enemy { index }` in a `bsn!` scene.
 #[derive(Component, Reflect, Debug, Clone, Copy, PartialEq, Eq, FromTemplate)]
@@ -44,7 +43,7 @@ impl Health {
         Self { current: max, max }
     }
 
-    /// Mirrors Godot `BattleCharacter.IsAlive => CurrentHealth > 0`.
+    /// A character is alive while its current health is above zero.
     #[must_use]
     pub fn is_alive(&self) -> bool {
         self.current > 0
@@ -53,8 +52,8 @@ impl Health {
 
 /// Marks the player as defending for the upcoming enemy turn. Inserted by the
 /// Defend action and removed `OnEnter(PlayerTurn)`. Phase 6 halves an incoming
-/// attack's value while this marker is present, mirroring the Godot
-/// `_lastPlayerAction == PlayerAction.Defend` check before the damage formula.
+/// attack's value while this marker is present, applied before the damage
+/// formula.
 #[derive(Component, Reflect, Debug, Clone, Copy, PartialEq, Eq)]
 #[reflect(Component)]
 pub struct Defending;
@@ -62,8 +61,7 @@ pub struct Defending;
 /// Marks the enemy currently under the targeting cursor. Drives the yellow
 /// sprite tint and is the one entity the selection indicator sits above. Exactly
 /// one alive enemy carries it while in [`Targeting`](crate::battle::state::TurnPhase::Targeting);
-/// it is removed when targeting ends (confirm or cancel). Mirrors the Godot
-/// `_selectedEnemy` highlight.
+/// it is removed when targeting ends (confirm or cancel).
 #[derive(Component, Reflect, Debug, Clone, Copy, PartialEq, Eq)]
 #[reflect(Component)]
 pub struct Targeted;
@@ -71,8 +69,7 @@ pub struct Targeted;
 /// The world-space mini HP bar's fill quad, parented under an enemy sprite and
 /// scaled along X by the owner's health fraction. `owner` is the enemy whose
 /// [`Health`] drives the fill, kept on the component so the HUD can scale each
-/// fill against the right entity without walking the parent hierarchy. Mirrors
-/// the Godot per-enemy `ProgressBar` child set up in `BattleCharacter`.
+/// fill against the right entity without walking the parent hierarchy.
 /// `FromTemplate` lets the `bsn!` macro accept an entity reference (`#enemy`) for
 /// the `owner` field when the HP bar is spawned inside the enemy's scene.
 #[derive(Component, Reflect, Debug, Clone, Copy, PartialEq, Eq, FromTemplate)]
@@ -92,8 +89,7 @@ pub struct CombatStats {
 /// Per-character multiplicative damage spread. A roll is sampled uniformly from
 /// `[min, max]` each time the character deals damage. Seeded from the character
 /// template's `damage_variance` (see [`DamageVarianceDef`]); the `Default`
-/// (0.8 / 1.2) mirrors the Godot `BattleCharacter` exports and is used only as a
-/// non-spawn fallback (e.g. the debug inspector).
+/// (0.8 / 1.2) is used only as a non-spawn fallback (e.g. the debug inspector).
 ///
 /// [`DamageVarianceDef`]: crate::characters::definition::DamageVarianceDef
 #[derive(Component, Reflect, Debug, Clone, Copy, PartialEq, FromTemplate)]
