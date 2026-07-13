@@ -64,6 +64,9 @@ redirected to Cloudflare's login instead of the game.
 >
 > This is real per-user authentication: access is tied to an email you control
 > and can be revoked at any time by editing the policy.
+>
+> The Access application + allow-list can also be managed as code with Terraform
+> instead of the dashboard — see [`infra/cloudflare-access/`](infra/cloudflare-access/).
 
 To build or serve the web version locally you need the wasm target and
 [`trunk`](https://trunkrs.dev):
