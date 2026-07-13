@@ -107,7 +107,7 @@ assets/
 
 ### Phase 2 — Core domain logic (pure, no rendering)
 `characters/components.rs` + `definition.rs` (RON is the source of truth — no serde defaults; stats mirror `CombatStats.cs`); `battle/seed.rs`; `battle/rng.rs`; `combat::compute_damage`; pure `suffix_duplicate_names` ("Goblin A/B/C…").
-**Tests (plain `#[test]`):** mirrors CharacterStatsTest (composition/defaults), BattleCharacterTest damage cases (min-1 damage, floor at 0, is_alive, halved attack, attack ≤ 0 → 0), BattleSceneSeedParsingTest (valid, u64::MAX, whitespace trim, non-numeric, empty), suffixing.
+**Tests (plain `#[test]`):** mirrors CharacterStatsTest (composition + no-defaults/RON contract), BattleCharacterTest damage cases (min-1 damage, floor at 0, is_alive, halved attack, attack ≤ 0 → 0), BattleSceneSeedParsingTest (valid, u64::MAX, whitespace trim, non-numeric, empty), suffixing.
 
 ### Phase 3 — Character assets + battle spawn
 `CharacterDef` as `Asset` + `AssetLoader` (extension `character.ron`); `hero.character.ron` (Hero 120/12/8) and `goblin.character.ron` (Goblin 80/10/4); `spawn.rs` reads `battle.seed`, seeds `SpawnRng`, rolls 1–4 enemies from the roster, suffixes duplicates, spawns player + enemies (`Sprite`, `Transform` from `BattleLayout`, stats components); `Camera2d`. Visible: hero + a random enemy row.
