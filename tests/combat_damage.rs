@@ -5,8 +5,8 @@
 //! rounds where the C# original truncated, so a few of these expectations
 //! differ from Godot by at most one point (called out inline).
 
-use bevy_2d_rpg_game::combat::compute_damage;
-use bevy_2d_rpg_game::components::Health;
+use aliasing::combat::compute_damage;
+use aliasing::components::Health;
 
 /// Apply a computed hit to a health pool the way later combat systems will:
 /// subtract and floor at zero.

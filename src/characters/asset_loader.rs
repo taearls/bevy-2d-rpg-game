@@ -3,7 +3,7 @@
 //! Mirrors the Godot data-driven `.tres` design: roster entries live as text
 //! assets so they can be edited (and hot-reloaded) without recompiling. The
 //! loader reads the whole file and deserializes it into a [`CharacterDef`] with
-//! `ron`, applying the serde stat defaults for any omitted fields.
+//! `ron`; every stat field must be present in the asset (no serde defaults).
 
 use bevy::asset::io::Reader;
 use bevy::asset::{AssetLoader, LoadContext};

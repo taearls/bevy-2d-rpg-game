@@ -1,4 +1,4 @@
-# Bevy 2D RPG justfile
+# Aliasing justfile
 
 # Run the game
 run:

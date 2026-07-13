@@ -117,6 +117,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "aliasing"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "getrandom 0.3.4",
+ "rand 0.9.4",
+ "rand_chacha",
+ "ron",
+ "serde",
+ "thiserror 2.0.18",
+]
+
+[[package]]
 name = "allocator-api2"
 version = "0.2.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -335,19 +348,6 @@ checksum = "950238d3049d81006a6fd6b898a34cfc01bb5462a7668795a54d640aed19fd0a"
 dependencies = [
  "bevy_dylib",
  "bevy_internal",
-]
-
-[[package]]
-name = "bevy-2d-rpg-game"
-version = "0.1.0"
-dependencies = [
- "bevy",
- "getrandom 0.3.4",
- "rand 0.9.4",
- "rand_chacha",
- "ron",
- "serde",
- "thiserror 2.0.18",
 ]
 
 [[package]]

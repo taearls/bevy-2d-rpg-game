@@ -14,11 +14,11 @@
 //! Options and Credits are intentionally non-functional for now: confirming
 //! either logs a "not yet implemented" line and leaves the player on the menu.
 
-use bevy::prelude::*;
-
 use crate::battle::menu::{CycleDirection, cycle_index};
+use crate::meta::Meta;
 use crate::progress::PlayerProgress;
 use crate::state::GameState;
+use bevy::prelude::*;
 
 /// Yellow used for the cursor and the highlighted row label (matches the battle
 /// action menu).
@@ -99,6 +99,7 @@ pub(crate) fn plugin(app: &mut App) {
 /// hidden yellow `>` cursor beside its label.
 pub fn spawn_main_menu(mut commands: Commands, mut selection: ResMut<MainMenuSelection>) {
     selection.highlighted = Some(0);
+    let project_name = Meta::default().project_name;
 
     // A centred column: the game title above the three option rows. The rows are
     // index-parametrized, so they are built as a `Vec<impl Scene>` (a `SceneList`)
@@ -121,7 +122,7 @@ pub fn spawn_main_menu(mut commands: Commands, mut selection: ResMut<MainMenuSel
         }
         Children [
             (
-                Text("Bevy 2D RPG")
+                Text(project_name)
                 TextFont { font_size: {FontSize::Px(TITLE_FONT_SIZE)} }
                 TextColor({DEFAULT_COLOR})
                 Node { margin: {UiRect::bottom(Val::Px(32.0))} }

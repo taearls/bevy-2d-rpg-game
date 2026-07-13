@@ -19,16 +19,16 @@ use bevy::prelude::*;
 use bevy::state::app::StatesPlugin;
 use bevy::time::TimeUpdateStrategy;
 
-use bevy_2d_rpg_game::battle::enemy_turn::{
+use aliasing::battle::enemy_turn::{
     ATTACK_INTERVAL, EnemyTurnQueue, on_enter_enemy_turn, tick_enemy_turn,
 };
-use bevy_2d_rpg_game::battle::menu::{MenuSelection, on_enter_player_turn};
-use bevy_2d_rpg_game::battle::messages::LogMessage;
-use bevy_2d_rpg_game::battle::rng::DamageRng;
-use bevy_2d_rpg_game::battle::state::{BattleResult, BattleSet, TurnPhase};
-use bevy_2d_rpg_game::combat::events::{AttackRequested, DamageDealt};
-use bevy_2d_rpg_game::combat::resolve::{apply_attacks, check_battle_end, on_died_hide_sprite};
-use bevy_2d_rpg_game::components::{
+use aliasing::battle::menu::{MenuSelection, on_enter_player_turn};
+use aliasing::battle::messages::LogMessage;
+use aliasing::battle::rng::DamageRng;
+use aliasing::battle::state::{BattleResult, BattleSet, TurnPhase};
+use aliasing::combat::events::{AttackRequested, DamageDealt};
+use aliasing::combat::resolve::{apply_attacks, check_battle_end, on_died_hide_sprite};
+use aliasing::components::{
     CombatStats, DamageVariance, Defending, DisplayName, Enemy, Health, Player,
 };
 

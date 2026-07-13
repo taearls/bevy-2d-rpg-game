@@ -14,22 +14,22 @@ use bevy::prelude::*;
 use bevy::scene::ScenePlugin;
 use bevy::state::app::StatesPlugin;
 
-use bevy_2d_rpg_game::battle::menu::{
+use aliasing::battle::menu::{
     ActionMenuPanel, LogView, MenuCursor, MenuSelection, spawn_action_menu, update_menu_highlight,
 };
-use bevy_2d_rpg_game::battle::messages::LogMessage;
-use bevy_2d_rpg_game::battle::state::{BattleSet, TurnPhase};
-use bevy_2d_rpg_game::battle::ui::UiConfig;
-use bevy_2d_rpg_game::battle::ui::battle_log::{
+use aliasing::battle::messages::LogMessage;
+use aliasing::battle::state::{BattleSet, TurnPhase};
+use aliasing::battle::ui::UiConfig;
+use aliasing::battle::ui::battle_log::{
     BattleHistory, BattleLogContainer, BattleLogPanel, HistoryContainer, HistoryScroll,
     HistoryViewport, LogHint, LogHold, clear_log_on_player_action, manage_history_view,
     record_history, render_log_panel, spawn_battle_log, swap_panel_for_phase, toggle_log_hint,
 };
-use bevy_2d_rpg_game::battle::ui::hud::{
+use aliasing::battle::ui::hud::{
     EnemyNameLabel, PlayerHpFill, PlayerNameLabel, refresh_enemy_labels, refresh_player_hud,
     spawn_hud, sync_enemy_health_bars, sync_enemy_label_text, update_enemy_label_highlight,
 };
-use bevy_2d_rpg_game::components::{DisplayName, Enemy, EnemyHealthBar, Health, Player, Targeted};
+use aliasing::components::{DisplayName, Enemy, EnemyHealthBar, Health, Player, Targeted};
 
 /// Yellow target highlight, matched against an `EnemyNameLabel`'s `TextColor`.
 const HIGHLIGHT: Color = Color::srgb(1.0, 1.0, 0.0);

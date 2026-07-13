@@ -75,7 +75,7 @@ impl BattleLayout {
 
 /// A single enemy chosen for a battle: the template it was rolled from plus the
 /// (possibly suffixed) display name it should spawn with.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct RosterEntry {
     pub def: CharacterDef,
     pub display_name: String,
@@ -226,7 +226,10 @@ pub fn spawn_player(
             attack: def.stats.attack,
             defense: def.stats.defense,
         },
-        DamageVariance::default(),
+        DamageVariance {
+            min: def.damage_variance.min,
+            max: def.damage_variance.max,
+        },
         DespawnOnExit(GameState::InBattle),
     ));
 }
@@ -243,6 +246,7 @@ pub fn spawn_enemies(
         let position = layout.enemy_position(index).extend(0.0);
         let name = entry.display_name.clone();
         let stats = entry.def.stats;
+        let variance = entry.def.damage_variance;
         // The enemy + its world-space overlay authored as one `bsn!` scene. The
         // `#enemy` self-reference lets the HP-bar children carry the enemy's own
         // `Entity` in their `EnemyNameLabel` / `EnemyHealthBar` markers —
@@ -260,7 +264,7 @@ pub fn spawn_enemies(
             // `Template` for `template_value` — but it derives `FromTemplate`.
             Health { current: {stats.max_health}, max: {stats.max_health} }
             CombatStats { attack: {stats.attack}, defense: {stats.defense} }
-            DamageVariance
+            DamageVariance { min: {variance.min}, max: {variance.max} }
             // Clickable for mouse targeting.
             Pickable
             template_value(DespawnOnExit(GameState::InBattle))
@@ -349,7 +353,7 @@ impl Roster {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::characters::definition::CombatStatsDef;
+    use crate::characters::definition::{CombatStatsDef, DamageVarianceDef};
     use rand_chacha::rand_core::SeedableRng;
 
     fn def(name: &str, max_health: i32, attack: i32, defense: i32) -> CharacterDef {
@@ -361,6 +365,7 @@ mod tests {
                 attack,
                 defense,
             },
+            damage_variance: DamageVarianceDef { min: 0.8, max: 1.2 },
         }
     }
 

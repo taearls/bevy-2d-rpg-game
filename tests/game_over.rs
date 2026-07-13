@@ -10,13 +10,13 @@ use bevy::prelude::*;
 use bevy::scene::ScenePlugin;
 use bevy::state::app::StatesPlugin;
 
-use bevy_2d_rpg_game::components::Health;
-use bevy_2d_rpg_game::game_over::{
+use aliasing::components::Health;
+use aliasing::game_over::{
     GameOverLabel, GameOverRoot, GameOverSelection, game_over_input, spawn_game_over,
     update_game_over_highlight,
 };
-use bevy_2d_rpg_game::progress::PlayerProgress;
-use bevy_2d_rpg_game::state::GameState;
+use aliasing::progress::PlayerProgress;
+use aliasing::state::GameState;
 
 /// Build a headless app sitting on the game-over screen, reached by transitioning
 /// from a (defeat) battle so `OnEnter(GameOver)` has built the menu. Seeds

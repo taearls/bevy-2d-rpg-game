@@ -11,11 +11,9 @@ use bevy::ecs::system::RunSystemOnce;
 use bevy::prelude::*;
 use bevy::scene::ScenePlugin;
 
-use bevy_2d_rpg_game::battle::spawn::{BattleLayout, RosterEntry, spawn_enemies, spawn_player};
-use bevy_2d_rpg_game::characters::definition::{CharacterDef, CombatStatsDef};
-use bevy_2d_rpg_game::components::{
-    CombatStats, DamageVariance, DisplayName, Enemy, Health, Player,
-};
+use aliasing::battle::spawn::{BattleLayout, RosterEntry, spawn_enemies, spawn_player};
+use aliasing::characters::definition::{CharacterDef, CombatStatsDef, DamageVarianceDef};
+use aliasing::components::{CombatStats, DamageVariance, DisplayName, Enemy, Health, Player};
 
 /// Minimal headless world with the asset + scene infrastructure. `AssetServer`
 /// mints texture handles for the `bsn!` `Sprite { image: ... }`, and `ScenePlugin`
@@ -37,6 +35,7 @@ fn goblin_def(max_health: i32, attack: i32, defense: i32) -> CharacterDef {
             attack,
             defense,
         },
+        damage_variance: DamageVarianceDef { min: 0.8, max: 1.2 },
     }
 }
 
@@ -70,6 +69,7 @@ fn spawns_one_player_with_template_stats() {
             attack: 12,
             defense: 8,
         },
+        damage_variance: DamageVarianceDef { min: 0.5, max: 1.5 },
     };
 
     app.world_mut()
@@ -81,17 +81,23 @@ fn spawns_one_player_with_template_stats() {
         )
         .unwrap();
 
-    let mut q = app
-        .world_mut()
-        .query_filtered::<(&DisplayName, &Health, &CombatStats, &Transform), With<Player>>();
+    let mut q = app.world_mut().query_filtered::<(
+        &DisplayName,
+        &Health,
+        &CombatStats,
+        &DamageVariance,
+        &Transform,
+    ), With<Player>>();
     let players: Vec<_> = q.iter(app.world()).collect();
     assert_eq!(players.len(), 1);
-    let (name, hp, stats, transform) = players[0];
+    let (name, hp, stats, variance, transform) = players[0];
     assert_eq!(name.0, "Hero");
     assert_eq!(hp.current, 120);
     assert_eq!(hp.max, 120);
     assert_eq!(stats.attack, 12);
     assert_eq!(stats.defense, 8);
+    assert_close(variance.min, 0.5);
+    assert_close(variance.max, 1.5);
     let pos = transform.translation.truncate();
     assert_close(pos.x, layout.player.x);
     assert_close(pos.y, layout.player.y);

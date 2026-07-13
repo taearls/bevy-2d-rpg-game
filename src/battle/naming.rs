@@ -11,7 +11,7 @@ use std::collections::HashMap;
 /// appearance. Names appearing exactly once are returned unchanged.
 ///
 /// ```
-/// # use bevy_2d_rpg_game::battle::naming::suffix_duplicate_names;
+/// # use aliasing::battle::naming::suffix_duplicate_names;
 /// assert_eq!(
 ///     suffix_duplicate_names(&["Goblin", "Slime", "Goblin"]),
 ///     vec!["Goblin A", "Slime", "Goblin B"],

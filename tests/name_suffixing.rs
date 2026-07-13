@@ -1,7 +1,7 @@
 //! Coverage for `suffix_duplicate_names`, mirroring the duplicate-name loop in
 //! Godot `BattleScene.SpawnEnemies`.
 
-use bevy_2d_rpg_game::battle::naming::suffix_duplicate_names;
+use aliasing::battle::naming::suffix_duplicate_names;
 
 #[test]
 fn unique_names_are_left_untouched() {

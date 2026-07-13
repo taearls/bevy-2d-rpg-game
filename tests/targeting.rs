@@ -17,17 +17,17 @@
 use bevy::prelude::*;
 use bevy::state::app::StatesPlugin;
 
-use bevy_2d_rpg_game::battle::enemy_turn::EnemyTurnQueue;
-use bevy_2d_rpg_game::battle::menu::{MenuSelection, on_enter_player_turn};
-use bevy_2d_rpg_game::battle::messages::LogMessage;
-use bevy_2d_rpg_game::battle::rng::DamageRng;
-use bevy_2d_rpg_game::battle::state::{BattleResult, BattleSet, TurnPhase};
-use bevy_2d_rpg_game::battle::targeting::{
+use aliasing::battle::enemy_turn::EnemyTurnQueue;
+use aliasing::battle::menu::{MenuSelection, on_enter_player_turn};
+use aliasing::battle::messages::LogMessage;
+use aliasing::battle::rng::DamageRng;
+use aliasing::battle::state::{BattleResult, BattleSet, TurnPhase};
+use aliasing::battle::targeting::{
     SelectedTarget, on_enter_targeting, on_exit_targeting, targeting_input,
 };
-use bevy_2d_rpg_game::combat::events::{AttackRequested, DamageDealt};
-use bevy_2d_rpg_game::combat::resolve::{apply_attacks, check_battle_end, on_died_hide_sprite};
-use bevy_2d_rpg_game::components::{
+use aliasing::combat::events::{AttackRequested, DamageDealt};
+use aliasing::combat::resolve::{apply_attacks, check_battle_end, on_died_hide_sprite};
+use aliasing::components::{
     CombatStats, DamageVariance, DisplayName, Enemy, Health, Player, Targeted,
 };
 
