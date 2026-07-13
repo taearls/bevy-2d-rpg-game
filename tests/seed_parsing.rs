@@ -1,5 +1,4 @@
-//! Parity with the Godot `BattleSceneSeedParsingTest`: the pure `parse_seed`
-//! helper and reading a seed file from disk.
+//! Covers the pure `parse_seed` helper and reading a seed file from disk.
 
 use aliasing::battle::seed::{parse_seed, read_seed_file_at};
 

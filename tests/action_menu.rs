@@ -1,5 +1,4 @@
-//! Headless turn-state + action-menu coverage, mirroring the Godot
-//! `ActionMenuTest` and the menu-related `BattleSceneTest` cases.
+//! Headless turn-state + action-menu coverage.
 //!
 //! These build a minimal `App` with the turn-state machine and menu systems
 //! wired, then drive it by pressing keys on the `ButtonInput<KeyCode>` resource
@@ -154,10 +153,10 @@ fn drain_log(app: &mut App) -> Vec<String> {
         .collect()
 }
 
-// --- cycle_index parity (mirrors ActionMenuTest cycling cases) ---
+// --- cycle_index cycling cases ---
 
 #[test]
-fn cycle_index_matches_godot_wrap_semantics() {
+fn cycle_index_matches_wrap_semantics() {
     // forward, backward, wrap both ways, from-unhighlighted → 0, single item.
     assert_eq!(cycle_index(Some(0), CycleDirection::Down, 4), 1);
     assert_eq!(cycle_index(Some(3), CycleDirection::Down, 4), 0);
@@ -283,7 +282,7 @@ fn cursor_follows_highlight_after_navigation() {
     assert_eq!(visible, vec![2]);
 }
 
-// --- Confirm dispatch (mirrors BattleSceneTest menu action cases) ---
+// --- Confirm dispatch ---
 
 #[test]
 fn fight_enters_targeting() {

@@ -2,13 +2,11 @@
 //! name labels with the targeting highlight, and the world-space enemy mini HP
 //! bars beneath each sprite.
 //!
-//! Bevy port of the Godot `BattleUI` widget half. Where the original pushed
-//! updates from a `HealthUpdated` signal, here each refresher is a system reading
-//! ECS state directly: the player HUD and enemy bars react to `Changed<Health>`,
-//! the enemy labels are rebuilt when the alive set changes, and the highlight
-//! follows the live [`Targeted`] marker. The pure label helpers
-//! ([`player_name_text`], [`hp_fill_fraction`]) are factored out so the
-//! `BattleUITest` parity cases assert text and percentages without a renderer.
+//! Each refresher is a system reading ECS state directly: the player HUD and
+//! enemy bars react to `Changed<Health>`, the enemy labels are rebuilt when the
+//! alive set changes, and the highlight follows the live [`Targeted`] marker. The
+//! pure label helpers ([`player_name_text`], [`hp_fill_fraction`]) are factored
+//! out so text and percentages can be asserted without a renderer.
 
 use std::collections::HashMap;
 
@@ -27,15 +25,15 @@ const HP_TRACK_COLOR: Color = Color::srgb(0.25, 0.05, 0.05);
 /// Fill colour of an HP bar.
 const HP_FILL_COLOR: Color = Color::srgb(0.85, 0.15, 0.15);
 
-/// Background of the full-width bottom info pane — the Godot `menu_panel`
-/// `StyleBoxFlat` (`bg_color = (0.08, 0.08, 0.08, 0.7)`).
+/// Background of the full-width bottom info pane
+/// (`bg_color = (0.08, 0.08, 0.08, 0.7)`).
 const INFO_PANE_COLOR: Color = Color::srgba(0.08, 0.08, 0.08, 0.7);
-/// Height of the info pane (the Godot `MenuPanel` `offset_top = -160`).
+/// Height of the info pane.
 const INFO_PANE_HEIGHT: f32 = 160.0;
 
-/// World-space size of an enemy mini HP bar (the Godot `enemy_health_bar`
-/// `custom_minimum_size` of 48×6). `pub(crate)` so the enemy spawner can build
-/// the bar inline in its `bsn!` scene (where the `#enemy` reference is in scope).
+/// World-space size of an enemy mini HP bar (48×6). `pub(crate)` so the enemy
+/// spawner can build the bar inline in its `bsn!` scene (where the `#enemy`
+/// reference is in scope).
 pub(crate) const ENEMY_BAR_SIZE: Vec2 = Vec2::new(48.0, 6.0);
 /// How far above the enemy sprite origin the mini HP bar sits. Kept close to the
 /// sprite so the bar reads as belonging to it.
@@ -81,8 +79,7 @@ pub struct PlayerHpFill;
 pub struct EnemyNameLabel(pub Entity);
 
 /// The player's name as shown in the HUD: the bare name while alive, suffixed
-/// `" (defeated)"` once dead. Pure port of the Godot
-/// `player.IsAlive ? DisplayName : $"{DisplayName} (defeated)"`.
+/// `" (defeated)"` once dead. Pure.
 #[must_use]
 pub fn player_name_text(name: &str, alive: bool) -> String {
     if alive {
@@ -112,13 +109,13 @@ pub fn hp_fill_fraction(current: i32, max: i32) -> f32 {
 /// filled by [`refresh_player_hud`] on the first `Changed<Health>` (which fires
 /// the frame the player spawns).
 pub fn spawn_hud(mut commands: Commands) {
-    // The Godot `MenuPanel`: a full-width `PanelContainer` anchored to the bottom
-    // with a fixed height and the dark translucent background. The player info
-    // sits at the right edge (`justify_content: FlexEnd`).
+    // A full-width pane anchored to the bottom with a fixed height and the dark
+    // translucent background. The player info sits at the right edge
+    // (`justify_content: FlexEnd`).
     // The HUD tree authored as a `bsn!` scene: the bottom info pane (`HudRoot`)
     // holds a right-aligned column with the player name above a 200×12 HP track,
     // whose percentage-width fill child maps the health fraction straight to its
-    // `width` (the Godot `ProgressBar.Value / MaxValue`).
+    // `width`.
     commands.spawn_scene(bsn! {
         HudRoot
         Node {
@@ -127,7 +124,7 @@ pub fn spawn_hud(mut commands: Commands) {
             left: Val::Px(0.0),
             width: Val::Percent(100.0),
             height: Val::Px(INFO_PANE_HEIGHT),
-            // The Godot `menu_panel` content margins: 16 px left/right.
+            // Content margins: 16 px left/right.
             padding: {UiRect::axes(Val::Px(16.0), Val::Px(12.0))},
             justify_content: JustifyContent::FlexEnd,
             align_items: AlignItems::Center,
@@ -136,8 +133,7 @@ pub fn spawn_hud(mut commands: Commands) {
         template_value(DespawnOnExit(GameState::InBattle))
         Children [
             (
-                // The player name over a fixed-width HP track + fill, matching the
-                // Godot `PlayerInfoContainer`.
+                // The player name over a fixed-width HP track + fill.
                 Node {
                     flex_direction: FlexDirection::Column,
                     row_gap: Val::Px(4.0),
@@ -171,7 +167,7 @@ pub fn spawn_hud(mut commands: Commands) {
 
 /// `BattleSet::Ui`: on a player `Health` change, update the name label
 /// (with the "(defeated)" suffix when dead) and set the HP fill width to the
-/// health percentage. Mirrors Godot `UpdateHealth`'s player branch.
+/// health percentage.
 pub fn refresh_player_hud(
     player: Query<
         (&DisplayName, &Health),
@@ -201,8 +197,7 @@ pub fn refresh_player_hud(
 /// [`crate::battle::spawn`]), so it appears with the sprite and rides along with
 /// it; this system only needs
 /// to remove it on death. Runs only when an enemy's [`Health`] changed, so a
-/// steady state costs one cheap early-out. Replaces the Godot
-/// `ClearAndFreeChildren` + re-add of alive enemies.
+/// steady state costs one cheap early-out.
 pub fn refresh_enemy_labels(
     mut commands: Commands,
     changed: Query<(), (With<Enemy>, Changed<Health>)>,
@@ -252,7 +247,7 @@ pub fn sync_enemy_label_text(
 /// `BattleSet::Ui`: tint the enemy name label of the currently [`Targeted`] enemy
 /// yellow and reset every other to white. Follows the live marker, so leaving
 /// targeting (which removes the marker) clears the highlight with no extra
-/// bookkeeping. Mirrors Godot `HighlightEnemyName` / `ClearEnemyHighlight`.
+/// bookkeeping.
 pub fn update_enemy_label_highlight(
     targeted: Query<Entity, With<Targeted>>,
     mut labels: Query<(&EnemyNameLabel, &mut TextColor)>,

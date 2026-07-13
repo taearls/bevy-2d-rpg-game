@@ -1,5 +1,4 @@
-//! Coverage for `suffix_duplicate_names`, mirroring the duplicate-name loop in
-//! Godot `BattleScene.SpawnEnemies`.
+//! Coverage for `suffix_duplicate_names` and its duplicate-name loop.
 
 use aliasing::battle::naming::suffix_duplicate_names;
 

@@ -1,4 +1,4 @@
-//! Turn-based RPG battle vertical slice — Bevy port of the Godot 4.6 C# original.
+//! Turn-based RPG battle vertical slice built in Bevy.
 //!
 //! Modules are exposed publicly so integration tests in `tests/` can build
 //! headless `App`s against the same plugins the binary uses, and exercise the

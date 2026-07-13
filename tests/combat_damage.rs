@@ -1,9 +1,9 @@
-//! Parity with the Godot `BattleCharacterTest` damage subset, exercising the
-//! pure `compute_damage` formula and how it reduces a `Health` component.
+//! Exercises the pure `compute_damage` formula and how it reduces a `Health`
+//! component.
 //!
 //! Note the deliberate divergence documented on `compute_damage`: this port
-//! rounds where the C# original truncated, so a few of these expectations
-//! differ from Godot by at most one point (called out inline).
+//! rounds where the original truncated, so a few of these expectations differ
+//! by at most one point (called out inline).
 
 use aliasing::combat::compute_damage;
 use aliasing::components::Health;
@@ -81,10 +81,10 @@ fn variance_scales_within_the_spread() {
 }
 
 #[test]
-fn rounding_diverges_from_godot_truncation() {
+fn rounding_diverges_from_truncation() {
     // Control: base 7 * 1.2 = 8.4 → both truncation and rounding give 8.
     assert_eq!(compute_damage(17, 10, 1.2), 8);
-    // Divergent: base 5 * 1.1 = 5.5 → truncation (Godot) gives 5; we round to 6.
+    // Divergent: base 5 * 1.1 = 5.5 → truncation gives 5; we round to 6.
     assert_eq!(compute_damage(15, 10, 1.1), 6);
     // Divergent: base 6 * 1.15 = 6.9 → truncation gives 6; we round to 7.
     assert_eq!(compute_damage(16, 10, 1.15), 7);

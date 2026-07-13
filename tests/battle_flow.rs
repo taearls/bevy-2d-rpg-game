@@ -1,5 +1,4 @@
-//! Full-loop battle orchestration, the Bevy analogue of the Godot
-//! `BattleSceneTest` end-to-end round-trip.
+//! Full-loop battle orchestration end-to-end round-trip.
 //!
 //! Where the per-phase suites (`action_menu`, `targeting`, `enemy_turn`) each
 //! exercise one slice in isolation, this test wires the **real** systems of all
@@ -173,8 +172,7 @@ fn steps_per_interval() -> u32 {
 }
 
 /// One full cycle round-trips through every phase and lands back in `PlayerTurn`
-/// with both sides having taken their hits — the `BattleSceneTest` orchestration
-/// equivalent.
+/// with both sides having taken their hits.
 #[test]
 fn full_round_trips_player_turn_to_enemy_turn_and_back() {
     let (mut app, enemies, player) = battle_app(2);

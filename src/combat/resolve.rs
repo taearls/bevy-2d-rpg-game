@@ -1,8 +1,7 @@
 //! Combat resolution: turn queued [`AttackRequested`]s into health changes,
 //! death reactions, and the battle-end check.
 //!
-//! Bevy port of the resolution half of the Godot `BattleScene` /
-//! `BattleCharacter.TakeDamage` flow. The per-hit math is delegated to the pure
+//! The per-hit math is delegated to the pure
 //! [`compute_damage`](super::damage::compute_damage); everything here is the ECS
 //! plumbing around it — sampling variance, mutating [`Health`], triggering
 //! [`Died`], and emitting [`DamageDealt`] + [`LogMessage`].
@@ -33,13 +32,9 @@ use super::events::{AttackRequested, DamageDealt, Died};
 /// world still matches when the attack was queued.
 ///
 /// A target carrying [`Defending`] halves the attacker's *attack value* before
-/// the formula (not the final damage), matching the Godot
-/// `_lastPlayerAction == Defend` branch that scaled the incoming attack stat.
+/// the formula (not the final damage), scaling the incoming attack stat.
 /// The marker is cleared `OnEnter(PlayerTurn)`, so the mitigation lasts exactly
 /// one enemy turn.
-///
-/// Mirrors Godot `BattleCharacter.TakeDamage` plus the `DamageDealt` /
-/// `CharacterDefeated` signal emissions.
 pub fn apply_attacks(
     mut attacks: MessageReader<AttackRequested>,
     mut damage_dealt: MessageWriter<DamageDealt>,
@@ -66,7 +61,7 @@ pub fn apply_attacks(
 
         // Defend halves the attacker's attack value *before* the formula, so the
         // defense subtraction and variance roll apply to the reduced figure.
-        // Integer division floors, matching the Godot halving.
+        // Integer division floors.
         let attack = if defending {
             stats.attack / 2
         } else {
@@ -97,9 +92,8 @@ pub fn apply_attacks(
 ///
 /// Kept minimal — the entity stays in the world (so its `Enemy { index }` slot
 /// and name remain queryable for "all enemies dead?" and the battle log) but
-/// drops out of view. Mirrors the Godot `QueueFree`-deferred hide-on-defeat
-/// without actually despawning, which would invalidate the layout indices the
-/// targeting cycle relies on.
+/// drops out of view. Hiding rather than despawning avoids invalidating the
+/// layout indices the targeting cycle relies on.
 pub fn on_died_hide_sprite(died: On<Died>, mut visibility: Query<&mut Visibility>) {
     if let Ok(mut vis) = visibility.get_mut(died.event().entity) {
         *vis = Visibility::Hidden;
@@ -124,8 +118,7 @@ pub fn on_died_hide_sprite(died: On<Died>, mut visibility: Query<&mut Visibility
 ///
 /// During the enemy turn (case 3's guard is false) a non-terminal attack leaves
 /// the state untouched: [`tick_enemy_turn`](crate::battle::enemy_turn::tick_enemy_turn)
-/// owns the `EnemyTurn → PlayerTurn` hand-back once its queue empties. Mirrors
-/// the Godot `CheckBattleEnd` victory/defeat branches.
+/// owns the `EnemyTurn → PlayerTurn` hand-back once its queue empties.
 pub fn check_battle_end(
     state: Res<State<TurnPhase>>,
     enemies: Query<&Health, With<Enemy>>,

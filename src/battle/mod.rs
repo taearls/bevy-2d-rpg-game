@@ -39,10 +39,10 @@ use targeting::{
 /// player action menu, enemy targeting, and combat resolution.
 pub(crate) fn plugin(app: &mut App) {
     app.add_plugins(ui::plugin)
-        // Register the former Godot `[Export(Range)]` tuning knobs for
-        // reflection (the `UiConfig` knob is registered alongside in
-        // `ui::plugin`). Kept feature-independent so the types stay reflectable
-        // for any tooling, independent of the optional diagnostics overlay.
+        // Register the tuning knobs for reflection (the `UiConfig` knob is
+        // registered alongside in `ui::plugin`). Kept feature-independent so the
+        // types stay reflectable for any tooling, independent of the optional
+        // diagnostics overlay.
         .register_type::<BattleLayout>()
         .register_type::<Health>()
         .register_type::<CombatStats>()
@@ -53,8 +53,8 @@ pub(crate) fn plugin(app: &mut App) {
         .init_resource::<SelectedTarget>()
         .init_resource::<EnemyTurnQueue>()
         .init_resource::<BattleResult>()
-        // Full-rectangle sprite hits, matching the Godot click areas, instead
-        // of the default alpha-threshold test.
+        // Full-rectangle sprite hits, instead of the default alpha-threshold
+        // test.
         .insert_resource(SpritePickingSettings {
             picking_mode: SpritePickingMode::BoundingBox,
             ..default()

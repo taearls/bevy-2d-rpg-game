@@ -1,5 +1,5 @@
-// Goblin enemy template — parity with the Godot `goblin_stats.tres`, which
-// omits Attack; here every field is explicit (attack matches the old default).
+// Goblin enemy template. Every field is explicit — the RON assets are the
+// single source of truth, so nothing falls back to a default.
 (
     display_name: "Goblin",
     sprite: "sprites/enemy.png",

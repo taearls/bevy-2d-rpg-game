@@ -1,4 +1,4 @@
-// Hero player template — parity with the Godot `hero_stats.tres`.
+// Hero player template.
 (
     display_name: "Hero",
     sprite: "sprites/hero.png",

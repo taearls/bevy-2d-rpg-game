@@ -1,12 +1,11 @@
 //! Player action menu: the Fight / Items / Defend / Flee list, its yellow `>`
 //! cursor, and the keyboard navigation that drives it during the player turn.
 //!
-//! Bevy port of the Godot `ActionMenu` + the menu half of `BattleScene`. The
-//! Godot version reparented a single cursor `Label` between rows; here every row
-//! owns its own cursor child and we visibility-toggle the one on the highlighted
-//! row, which is despawn-safe and trivial to assert headlessly. The highlight
-//! cycling logic ([`cycle_index`]) is a pure function so the `ActionMenuTest`
-//! wrap-around cases can be mirrored without an ECS world.
+//! Rather than reparenting a single cursor `Label` between rows, every row owns
+//! its own cursor child and we visibility-toggle the one on the highlighted row,
+//! which is despawn-safe and trivial to assert headlessly. The highlight cycling
+//! logic ([`cycle_index`]) is a pure function so the wrap-around cases can be
+//! asserted without an ECS world.
 
 use bevy::prelude::*;
 
@@ -23,10 +22,9 @@ const DEFAULT_COLOR: Color = Color::WHITE;
 /// The cursor glyph drawn to the left of the highlighted row.
 const CURSOR_TEXT: &str = ">";
 
-/// Background of the action-menu / log panel — the Godot `action_menu_panel`
-/// `StyleBoxFlat` (`bg_color = (0.12, 0.12, 0.16, 1)`).
+/// Background of the action-menu / log panel (`bg_color = (0.12, 0.12, 0.16, 1)`).
 const PANEL_BG_COLOR: Color = Color::srgb(0.12, 0.12, 0.16);
-/// White 2px border of the action-menu panel (the Godot `border_color`).
+/// White 2px border of the action-menu panel.
 const PANEL_BORDER_COLOR: Color = Color::WHITE;
 /// How far above the bottom of the screen the centred action-menu panel sits.
 /// Lower than the 160px info-pane height so the box's bottom edge overlaps the
@@ -34,9 +32,9 @@ const PANEL_BORDER_COLOR: Color = Color::WHITE;
 /// layered look (rather than floating in the gap above it).
 const PANEL_BOTTOM_OFFSET: f32 = 0.0;
 
-/// The five menu actions, in display order. Index parity with the row layout and
-/// with the Godot `SetActions(Fight, Items, Defend, Flee)` ordering, plus the
-/// Bevy-only [`Log`](MenuAction::Log) review option.
+/// The five menu actions, in display order — Fight, Items, Defend, Flee in that
+/// order (index parity with the row layout), plus the
+/// [`Log`](MenuAction::Log) review option.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MenuAction {
     Fight,
@@ -73,8 +71,8 @@ impl MenuAction {
     }
 }
 
-/// Which row the cursor sits on, or `None` before the first highlight. Mirrors
-/// Godot `ActionMenu._highlightedIndex` (with `-1` modelled as `None`).
+/// Which row the cursor sits on, or `None` before the first highlight (with `-1`
+/// modelled as `None`).
 #[derive(Resource, Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct MenuSelection {
     pub highlighted: Option<usize>,
@@ -89,7 +87,7 @@ pub struct LogView {
     pub open: bool,
 }
 
-/// Root container of the action menu (the Godot `ActionMenu` `VBoxContainer`).
+/// Root container of the action menu (a vertical column of rows).
 /// `Default + Clone` lets the `bsn!` macro treat the marker as a `Template`.
 #[derive(Component, Debug, Default, Clone)]
 pub struct ActionMenuPanel;
@@ -117,11 +115,11 @@ pub enum CycleDirection {
 
 /// Step the highlighted index in `direction` with wrap-around.
 ///
-/// Pure port of Godot `ActionMenu.CycleHighlight`: from no selection it lands on
-/// row 0 regardless of direction; otherwise it wraps modulo `count`. Computed in
-/// `usize` to stay sign-clean — an upward step adds `count - 1` (≡ `-1` mod
-/// `count`) so row 0 wraps to the last row without a signed cast. `count` must
-/// be non-zero (the menu always has four rows).
+/// Pure: from no selection it lands on row 0 regardless of direction; otherwise
+/// it wraps modulo `count`. Computed in `usize` to stay sign-clean — an upward
+/// step adds `count - 1` (≡ `-1` mod `count`) so row 0 wraps to the last row
+/// without a signed cast. `count` must be non-zero (the menu always has four
+/// rows).
 #[must_use]
 pub fn cycle_index(current: Option<usize>, direction: CycleDirection, count: usize) -> usize {
     match current {
@@ -137,8 +135,7 @@ pub fn cycle_index(current: Option<usize>, direction: CycleDirection, count: usi
 }
 
 /// `OnEnter(PlayerTurn)`: clear any leftover `Defending` marker and highlight
-/// row 0, matching Godot `StartPlayerTurn` (`Highlight(0)`) and the Phase 4
-/// "`Defending` removed `OnEnter(PlayerTurn)`" requirement.
+/// row 0, so each player turn starts on the first action with no stale defence.
 pub fn on_enter_player_turn(
     mut commands: Commands,
     mut selection: ResMut<MenuSelection>,
@@ -151,8 +148,7 @@ pub fn on_enter_player_turn(
 }
 
 /// Keyboard navigation, gated to the player turn. Up/Down cycle the highlight
-/// with wrap; Enter confirms the highlighted action. Mirrors the `PlayerTurn`
-/// branch of Godot `BattleScene._UnhandledInput`.
+/// with wrap; Enter confirms the highlighted action.
 pub fn menu_input(
     keys: Res<ButtonInput<KeyCode>>,
     mut selection: ResMut<MenuSelection>,
@@ -236,8 +232,7 @@ pub fn close_log_view_on_player_turn(mut log_view: ResMut<LogView>) {
 }
 
 /// Run the chosen action, dispatching to the right turn transition and log line.
-/// Split out so headless tests can invoke it directly, mirroring
-/// `ActionMenuTest.ConfirmSelection_InvokesCorrectHandler`.
+/// Split out so headless tests can invoke it directly.
 fn confirm_action(
     action: MenuAction,
     next_state: &mut NextState<TurnPhase>,
@@ -314,8 +309,7 @@ pub fn update_menu_highlight(
 /// separately by [`update_menu_highlight`].
 pub fn spawn_action_menu(mut commands: Commands) {
     // A full-width, bottom-anchored wrapper that horizontally centres the panel
-    // box — the Bevy equivalent of the Godot `ActionMenuPanel` `anchor 0.5`
-    // centring. The wrapper takes no space visually (no background); the
+    // box. The wrapper takes no space visually (no background); the
     // `ActionMenuPanel` child is the styled box that floats above the info pane.
     //
     // The rows are index-parametrized, so they are built as a `Vec<impl Scene>`
@@ -343,8 +337,7 @@ pub fn spawn_action_menu(mut commands: Commands) {
                 Node {
                     flex_direction: FlexDirection::Column,
                     row_gap: Val::Px(4.0),
-                    // The Godot `action_menu_panel` content margins (16/12)
-                    // and 2px border.
+                    // Panel content margins (16/12) and 2px border.
                     padding: {UiRect::axes(Val::Px(16.0), Val::Px(12.0))},
                     border: {UiRect::all(Val::Px(2.0))},
                     border_radius: {BorderRadius::all(Val::Px(4.0))},
@@ -391,40 +384,36 @@ fn menu_row(index: usize, label: &str) -> impl Scene {
 mod tests {
     use super::*;
 
-    /// Forward stepping advances by one and wraps past the last row to 0,
-    /// mirroring `ActionMenuTest.CycleHighlight_WrapsForward`.
+    /// Forward stepping advances by one and wraps past the last row to 0.
     #[test]
     fn cycle_forward_wraps() {
         assert_eq!(cycle_index(Some(0), CycleDirection::Down, 4), 1);
         assert_eq!(cycle_index(Some(3), CycleDirection::Down, 4), 0);
     }
 
-    /// Backward stepping decrements and wraps from row 0 to the last row,
-    /// mirroring `ActionMenuTest.CycleHighlight_WrapsBackward`.
+    /// Backward stepping decrements and wraps from row 0 to the last row.
     #[test]
     fn cycle_backward_wraps() {
         assert_eq!(cycle_index(Some(2), CycleDirection::Up, 4), 1);
         assert_eq!(cycle_index(Some(0), CycleDirection::Up, 4), 3);
     }
 
-    /// From no selection, either direction lands on row 0
-    /// (`ActionMenuTest.CycleHighlight_FromUnhighlighted_GoesToFirst`).
+    /// From no selection, either direction lands on row 0.
     #[test]
     fn cycle_from_unhighlighted_goes_to_zero() {
         assert_eq!(cycle_index(None, CycleDirection::Down, 4), 0);
         assert_eq!(cycle_index(None, CycleDirection::Up, 4), 0);
     }
 
-    /// A single-row menu stays put under cycling
-    /// (`ActionMenuTest.CycleHighlight_SingleItem_StaysOnSame`).
+    /// A single-row menu stays put under cycling.
     #[test]
     fn cycle_single_item_stays() {
         assert_eq!(cycle_index(Some(0), CycleDirection::Down, 1), 0);
         assert_eq!(cycle_index(Some(0), CycleDirection::Up, 1), 0);
     }
 
-    /// The five actions render their labels in order — the four Godot actions
-    /// plus the Bevy-only Log review option.
+    /// The five actions render their labels in order — the four battle actions
+    /// plus the Log review option.
     #[test]
     fn actions_have_expected_labels() {
         let labels: Vec<&str> = MenuAction::ALL.iter().map(|a| a.label()).collect();

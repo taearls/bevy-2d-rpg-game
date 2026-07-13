@@ -1,13 +1,12 @@
 //! Enemy targeting: the `Targeting`-phase cursor that picks which enemy the
 //! player attacks, plus the yellow tint + selection indicator that show it.
 //!
-//! Bevy port of the targeting half of the Godot `BattleScene`: Fight enters
-//! [`Targeting`](TurnPhase::Targeting), where Left/Right cycle the *alive*
-//! enemies (with wrap), Escape cancels back to the menu, and Enter (or a click)
-//! confirms the attack. The selection logic is factored into pure functions —
-//! [`alive_enemies`], [`cycle_target`], [`try_select_target`] — so the cycle,
-//! wrap, and click-rejection cases can be asserted headlessly without a renderer
-//! or an input device, exactly as the `GdUnit4` originals were.
+//! Fight enters [`Targeting`](TurnPhase::Targeting), where Left/Right cycle the
+//! *alive* enemies (with wrap), Escape cancels back to the menu, and Enter (or a
+//! click) confirms the attack. The selection logic is factored into pure
+//! functions — [`alive_enemies`], [`cycle_target`], [`try_select_target`] — so
+//! the cycle, wrap, and click-rejection cases can be asserted headlessly without
+//! a renderer or an input device.
 
 use bevy::prelude::*;
 
@@ -25,10 +24,9 @@ const TARGET_TINT: Color = Color::srgb(1.0, 1.0, 0.0);
 const NO_TINT: Color = Color::WHITE;
 
 /// The enemy the targeting cursor currently sits on, or `None` outside the
-/// [`Targeting`](TurnPhase::Targeting) phase. Mirrors Godot `_selectedEnemy`
-/// (`null` when not targeting). Kept as a resource — rather than only the
-/// [`Targeted`] marker — so the confirm/cancel input reads the selection in O(1)
-/// without scanning every enemy.
+/// [`Targeting`](TurnPhase::Targeting) phase. Kept as a resource — rather than
+/// only the [`Targeted`] marker — so the confirm/cancel input reads the selection
+/// in O(1) without scanning every enemy.
 #[derive(Resource, Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct SelectedTarget(pub Option<Entity>);
 
@@ -81,8 +79,8 @@ pub fn alive_enemies(query: &Query<(Entity, &Enemy, &Health)>) -> Vec<AliveEnemy
 /// Pure over `(current, alive, direction)`:
 /// - empty `alive` ⇒ `None` (nothing to target).
 /// - `current` not in `alive` (e.g. it just died, or we just entered targeting)
-///   ⇒ the first alive enemy, regardless of direction — matching Godot's
-///   "re-home onto a valid enemy" behaviour.
+///   ⇒ the first alive enemy, regardless of direction — re-homing onto a valid
+///   enemy.
 /// - otherwise step ±1 over the alive list modulo its length, so the ends wrap.
 ///
 /// Cycling over the *compacted* alive list (not raw layout indices) is what
@@ -131,7 +129,7 @@ pub fn try_select_target(candidate: Entity, alive: &[AliveEnemy]) -> Option<Enti
 /// Sets [`SelectedTarget`] to the lowest-index living enemy (or `None` if the
 /// battle is somehow already won) and marks it [`Targeted`]. The tint and
 /// indicator follow from [`Targeted`] via [`update_target_visuals`] in the UI
-/// set. Mirrors Godot `StartTargeting` selecting the first enemy.
+/// set.
 pub fn on_enter_targeting(
     mut commands: Commands,
     mut selected: ResMut<SelectedTarget>,
@@ -166,8 +164,7 @@ pub fn on_exit_targeting(
 /// cycle alive enemies, Escape cancels to the menu, Enter confirms the attack.
 ///
 /// Confirm delegates to [`confirm_target`] so the click observer shares the exact
-/// same path. Mirrors the `Targeting` branch of Godot
-/// `BattleScene._UnhandledInput`.
+/// same path.
 pub fn targeting_input(
     keys: Res<ButtonInput<KeyCode>>,
     mut commands: Commands,
@@ -246,8 +243,8 @@ fn set_target(commands: &mut Commands, selected: &mut SelectedTarget, next: Opti
 }
 
 /// Per-entity click observer: in [`Targeting`](TurnPhase::Targeting), a click on
-/// an alive enemy selects *and* confirms in one step (Godot click-to-attack
-/// parity); clicks in any other phase are ignored.
+/// an alive enemy selects *and* confirms in one step (click-to-attack); clicks
+/// in any other phase are ignored.
 ///
 /// Spawned on each enemy via `.observe(on_enemy_clicked)`. The validity gate is
 /// [`try_select_target`], the same one the keyboard path uses, so a click on a

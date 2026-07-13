@@ -1,5 +1,4 @@
-//! Headless smoke test for the full battle plugin stack — the Bevy analogue of
-//! the Godot `BattleTscnSmokeTest`.
+//! Headless smoke test for the full battle plugin stack.
 //!
 //! Builds an `App` with the real [`GamePlugin`] (which pulls in the character,
 //! battle, and HUD/log plugins), pins the spawn RNG to a fixed seed, lets the

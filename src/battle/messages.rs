@@ -1,9 +1,9 @@
 //! Battle log messaging.
 //!
-//! Replaces the Godot `BattleEvents.LogMessage` signal with a frame-buffered
-//! Bevy [`Message`]. Any system can `MessageWriter::write` a [`LogMessage`];
-//! readers drain it each frame. Phase 4 renders messages to tracing/stdout;
-//! Phase 7 adds the on-screen battle-log panel reading the same stream.
+//! A frame-buffered Bevy [`Message`]. Any system can `MessageWriter::write` a
+//! [`LogMessage`]; readers drain it each frame. Phase 4 renders messages to
+//! tracing/stdout; Phase 7 adds the on-screen battle-log panel reading the same
+//! stream.
 
 use bevy::prelude::*;
 

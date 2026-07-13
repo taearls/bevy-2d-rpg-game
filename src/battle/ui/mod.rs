@@ -1,4 +1,4 @@
-//! Battle HUD and on-screen log — the Bevy port of the Godot `BattleUI`.
+//! Battle HUD and on-screen log.
 //!
 //! Two cooperating pieces, each in its own submodule:
 //! - [`hud`] — the player name + HP fill, the dynamic alive-enemy name labels
@@ -7,12 +7,10 @@
 //!   plus the menu↔log panel swap that widens the centre panel while the log
 //!   shows.
 //!
-//! The Godot original drove these widgets off a `BattleEvents` signal bus with
-//! manual subscribe/disconnect bookkeeping; here every widget is a plain system
-//! reading ECS state — player/enemy HUD from `Changed<Health>`, the log from a
-//! `MessageReader<LogMessage>`, the panel width from [`UiConfig`] and the current
-//! [`TurnPhase`]. That deletes the entire bus-lifetime problem: a despawned
-//! entity simply drops out of the next query.
+//! Every widget is a plain system reading ECS state — player/enemy HUD from
+//! `Changed<Health>`, the log from a `MessageReader<LogMessage>`, the panel width
+//! from [`UiConfig`] and the current [`TurnPhase`]. A despawned entity simply
+//! drops out of the next query.
 
 pub mod battle_log;
 pub mod hud;
@@ -32,14 +30,13 @@ use hud::{
 use super::state::{BattleSet, TurnPhase};
 use crate::state::GameState;
 
-/// Tunable panel half-widths, the Phase 8 inspector's parity for the Godot
-/// `BattleUI` `[Export(Range)]` knobs (`ActionMenuHalfWidth` / `BattleLogHalfWidth`).
+/// Tunable panel half-widths, exposed as Phase 8 inspector knobs.
 ///
 /// The centre panel's *total* width is twice the active half-width: the action
 /// menu shows at `2 * action_menu_half_width` (200 px by default), and the wider
-/// battle log at `2 * battle_log_half_width` (350 px). Stored as half-widths to
-/// mirror the Godot `OffsetLeft = -half` / `OffsetRight = half` centring, so a
-/// live edit in the inspector maps one-to-one onto the original's behaviour.
+/// battle log at `2 * battle_log_half_width` (350 px). Stored as half-widths
+/// (`OffsetLeft = -half` / `OffsetRight = half` centring) so a live edit in the
+/// inspector maps one-to-one onto the panel span.
 #[derive(Resource, Reflect, Debug, Clone, Copy, PartialEq)]
 #[reflect(Resource)]
 pub struct UiConfig {
@@ -51,7 +48,7 @@ pub struct UiConfig {
 
 impl Default for UiConfig {
     fn default() -> Self {
-        // 100 → 200 px menu, 175 → 350 px log: the Godot `BattleUI` defaults.
+        // 100 → 200 px menu, 175 → 350 px log.
         Self {
             action_menu_half_width: 100.0,
             battle_log_half_width: 175.0,
@@ -63,7 +60,7 @@ impl UiConfig {
     /// Full pixel width of the centre panel for the given mode.
     ///
     /// `log_showing` selects the wider battle-log width; otherwise the narrower
-    /// action-menu width. Doubling the half-width reproduces the Godot
+    /// action-menu width. Doubling the half-width gives the
     /// `OffsetRight - OffsetLeft = 2 * half` span.
     #[must_use]
     pub fn panel_width(&self, log_showing: bool) -> f32 {
@@ -78,8 +75,7 @@ impl UiConfig {
 /// Whether the battle log (rather than the action menu) currently fills the
 /// centre panel. The log shows during [`EnemyTurn`](TurnPhase::EnemyTurn) and
 /// [`BattleOver`](TurnPhase::BattleOver) — the phases where the player cannot act
-/// — and the menu shows otherwise. Mirrors the Godot `_actionMenuActive` flag
-/// that `ApplyCurrentPanelWidth` keyed off.
+/// — and the menu shows otherwise.
 #[must_use]
 pub fn log_showing(phase: TurnPhase) -> bool {
     matches!(phase, TurnPhase::EnemyTurn | TurnPhase::BattleOver)
