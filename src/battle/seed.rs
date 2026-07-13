@@ -1,10 +1,9 @@
 //! Optional pinned-seed support for deterministic spawning.
 //!
-//! Mirrors the Godot `battle.seed` mechanism: a local, gitignored file holding
-//! a single unsigned integer, written by `just shuffle` and removed by
-//! `just unshuffle`. When present and valid, the spawn RNG is seeded from it so
-//! the same roster is produced every launch; otherwise spawning rolls fresh
-//! entropy. Parity with `BattleScene.TryParseSeed` / `LoadSeededRng`.
+//! A local, gitignored `battle.seed` file holds a single unsigned integer,
+//! written by `just shuffle` and removed by `just unshuffle`. When present and
+//! valid, the spawn RNG is seeded from it so the same roster is produced every
+//! launch; otherwise spawning rolls fresh entropy.
 
 use std::fs;
 use std::path::Path;
@@ -16,8 +15,7 @@ pub const SEED_FILE_PATH: &str = "battle.seed";
 ///
 /// Returns `Some` when `raw` (after trimming surrounding whitespace, including
 /// a trailing newline) is a valid unsigned 64-bit integer, and `None`
-/// otherwise. Mirrors Godot `TryParseSeed`, which trims and parses with
-/// invariant-culture integer rules.
+/// otherwise.
 #[must_use]
 pub fn parse_seed(raw: &str) -> Option<u64> {
     raw.trim().parse::<u64>().ok()
@@ -27,7 +25,7 @@ pub fn parse_seed(raw: &str) -> Option<u64> {
 ///
 /// Returns `None` when the file is missing, unreadable, or does not contain a
 /// valid unsigned integer — in every such case the caller falls back to a
-/// fresh, entropy-seeded RNG (matching the Godot behaviour).
+/// fresh, entropy-seeded RNG.
 #[must_use]
 pub fn read_seed_file() -> Option<u64> {
     read_seed_file_at(SEED_FILE_PATH)

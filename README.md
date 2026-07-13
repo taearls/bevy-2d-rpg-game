@@ -1,9 +1,7 @@
 # aliasing
 
 A turn-based RPG battle vertical slice built in [Bevy](https://bevyengine.org)
-0.19 — a port of an existing Godot 4.6 / C# game. See
-[PORT_PLAN.md](PORT_PLAN.md) for the full design and the phased
-[ROADMAP.md](ROADMAP.md) for status.
+0.19. See [ROADMAP.md](ROADMAP.md) for phased status.
 
 ## Gameplay
 

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-A turn-based RPG battle vertical slice in **Bevy 0.19** (Rust edition 2024), ported from a Godot 4.6 / C# original. `PORT_PLAN.md` holds the design and the parity mapping back to the Godot source; `ROADMAP.md` tracks phased status. Many modules carry `// Mirrors the Godot ...` comments — when a behavior seems arbitrary, the original's parity is usually the reason, and the doc comment names the source file.
+A turn-based RPG battle vertical slice in **Bevy 0.19** (Rust edition 2024). `ROADMAP.md` tracks phased status.
 
 ## Commands
 

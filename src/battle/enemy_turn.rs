@@ -1,16 +1,14 @@
 //! The enemy turn: a timed queue that lets each living enemy attack the player
 //! once, with a beat between blows.
 //!
-//! Bevy port of the Godot `BattleScene.ProcessEnemyAttacks` chain. The Godot
-//! version queued one-shot `SceneTreeTimer`s per enemy; here a single
-//! [`EnemyTurnQueue`] resource holds the pending attackers and one [`Timer`],
-//! ticked by [`tick_enemy_turn`]. That collapses the recursive timer chain into
-//! one deterministic system — under `TimeUpdateStrategy::ManualDuration` a test
-//! can advance virtual time by an exact amount and assert precisely which
-//! attacks have fired.
+//! A single [`EnemyTurnQueue`] resource holds the pending attackers and one
+//! [`Timer`], ticked by [`tick_enemy_turn`]. That keeps the whole turn one
+//! deterministic system — under `TimeUpdateStrategy::ManualDuration` a test can
+//! advance virtual time by an exact amount and assert precisely which attacks
+//! have fired.
 //!
-//! The first attack lands immediately on entering the turn (parity with Godot
-//! `ProcessEnemyAttacks(0)`), then each subsequent attack waits
+//! The first attack lands immediately on entering the turn, then each subsequent
+//! attack waits
 //! [`ATTACK_INTERVAL`]. When the queue empties the turn hands back to
 //! [`PlayerTurn`](TurnPhase::PlayerTurn); a player death mid-queue is caught by
 //! [`check_battle_end`](crate::combat::resolve::check_battle_end), which clears
@@ -27,8 +25,7 @@ use super::state::TurnPhase;
 use crate::combat::events::AttackRequested;
 
 /// Wall-clock gap between consecutive enemy attacks. The first attack of the
-/// turn is immediate; every one after it waits this long. Matches the Godot
-/// `EnemyAttackDelay` of one second.
+/// turn is immediate; every one after it waits this long (one second).
 pub const ATTACK_INTERVAL: Duration = Duration::from_secs(1);
 
 /// The enemies still waiting to attack this turn, plus the inter-attack timer.
@@ -61,7 +58,7 @@ impl EnemyTurnQueue {
 /// the on-screen left-to-right row, independent of ECS iteration order. The
 /// timer is created already finished (`tick(ATTACK_INTERVAL)` past a one-shot
 /// timer) so [`tick_enemy_turn`] pops the first attacker on the very next frame
-/// without waiting — Godot's immediate `ProcessEnemyAttacks(0)`.
+/// without waiting.
 pub fn on_enter_enemy_turn(
     mut queue: ResMut<EnemyTurnQueue>,
     enemies: Query<(Entity, &Enemy, &Health)>,

@@ -1,5 +1,4 @@
-//! Headless targeting coverage, mirroring the Godot `BattleSceneTest` targeting
-//! cases.
+//! Headless targeting coverage.
 //!
 //! Builds an `App` with the turn-state machine, the action menu's
 //! `OnEnter(PlayerTurn)` highlight, the full targeting input/lifecycle, and the

@@ -1,7 +1,6 @@
 //! Turn-flow state machine and the chained battle system sets.
 //!
-//! Mirrors the Godot `TurnState` enum that gated `BattleScene._UnhandledInput`:
-//! input is only accepted in the phase that owns it, so "battle over disables
+//! Input is only accepted in the phase that owns it, so "battle over disables
 //! input" falls out of `run_if(in_state(...))` for free, with no manual flag.
 
 use bevy::prelude::*;
@@ -32,8 +31,7 @@ pub enum TurnPhase {
 /// state enum stays unit-only — `in_state(BattleOver)` and the `OnEnter`/`OnExit`
 /// wiring need no payload, while consumers that care about *which* ending
 /// occurred read this. `victory` is `true` when the player cleared the enemies,
-/// `false` when the player fell. Mirrors the Godot `BattleResult` the plan
-/// specified.
+/// `false` when the player fell.
 #[derive(Resource, Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct BattleResult {
     pub victory: bool,

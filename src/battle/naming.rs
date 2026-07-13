@@ -3,7 +3,6 @@
 //! When the spawn RNG rolls the same enemy archetype more than once, the
 //! duplicates are lettered ("Goblin A", "Goblin B", …) so the player and battle
 //! log can tell them apart. Names that occur exactly once are left untouched.
-//! Parity with the suffixing loop in Godot `BattleScene.SpawnEnemies`.
 
 use std::collections::HashMap;
 

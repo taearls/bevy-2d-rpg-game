@@ -1,5 +1,4 @@
-//! Headless enemy-turn coverage, mirroring the Godot `BattleSceneTest`
-//! enemy-attack cases.
+//! Headless enemy-turn coverage of the enemy-attack cases.
 //!
 //! Builds an `App` with the turn-state machine, the `OnEnter(EnemyTurn)` queue
 //! build, the `tick_enemy_turn` releaser, and the combat resolver +

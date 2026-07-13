@@ -1,5 +1,5 @@
-//! Parity with the Godot `CharacterStatsTest`: component composition and RON
-//! deserialization for the data-driven character templates.
+//! Component composition and RON deserialization for the data-driven character
+//! templates.
 
 use aliasing::characters::definition::{CharacterDef, CombatStatsDef, DamageVarianceDef};
 use aliasing::components::{CombatStats, DamageVariance, DisplayName, Health};
@@ -37,7 +37,7 @@ fn components_compose_into_a_character_profile() {
 }
 
 #[test]
-fn damage_variance_defaults_match_godot_exports() {
+fn damage_variance_defaults_match_expected() {
     let variance = DamageVariance::default();
     assert_eq!(variance, DamageVariance { min: 0.8, max: 1.2 });
 }
