@@ -1,10 +1,15 @@
 // Goblin enemy template — parity with the Godot `goblin_stats.tres`, which
-// omits Attack so it falls back to the CombatStats default (10).
+// omits Attack; here every field is explicit (attack matches the old default).
 (
     display_name: "Goblin",
     sprite: "sprites/enemy.png",
     stats: (
         max_health: 80,
+        attack: 10,
         defense: 4,
+    ),
+    damage_variance: (
+        min: 0.8,
+        max: 1.2,
     ),
 )

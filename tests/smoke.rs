@@ -8,16 +8,16 @@
 //! nothing panicked along the way. No renderer is involved — only the asset,
 //! state, and input infrastructure the plugins need.
 
+use aliasing::battle::rng::SpawnRng;
+use aliasing::components::{Enemy, Player};
+use aliasing::game::GamePlugin;
+use aliasing::state::GameState;
 use bevy::asset::AssetPlugin;
 use bevy::input::InputPlugin;
 use bevy::prelude::*;
 use bevy::scene::ScenePlugin;
 use bevy::sprite_render::ColorMaterial;
 use bevy::state::app::StatesPlugin;
-use bevy_2d_rpg_game::battle::rng::SpawnRng;
-use bevy_2d_rpg_game::components::{Enemy, Player};
-use bevy_2d_rpg_game::game::GamePlugin;
-use bevy_2d_rpg_game::state::GameState;
 
 /// Build the headless battle app on a fixed seed.
 ///
@@ -100,7 +100,7 @@ fn full_stack_spawns_seeded_battle_and_runs_ten_frames() {
     let mut enemies = app.world_mut().query_filtered::<Entity, With<Enemy>>();
     let enemy_count = enemies.iter(app.world()).count();
     assert!(
-        (1..=bevy_2d_rpg_game::battle::spawn::MAX_ENEMIES).contains(&enemy_count),
+        (1..=aliasing::battle::spawn::MAX_ENEMIES).contains(&enemy_count),
         "seed 42 should roll 1..=MAX_ENEMIES enemies, got {enemy_count}"
     );
 
@@ -120,7 +120,7 @@ fn full_stack_spawns_seeded_battle_and_runs_ten_frames() {
 #[test]
 fn debug_plugin_is_noop_when_headless() {
     let mut app = App::new();
-    app.add_plugins((MinimalPlugins, bevy_2d_rpg_game::debug::plugin));
+    app.add_plugins((MinimalPlugins, aliasing::debug::plugin));
     // A few frames with no renderer present must not panic.
     for _ in 0..3 {
         app.update();

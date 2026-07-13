@@ -1,14 +1,16 @@
+use aliasing::game::GamePlugin;
+use aliasing::meta::Meta;
 use bevy::asset::AssetMetaCheck;
 use bevy::prelude::*;
-use bevy_2d_rpg_game::game::GamePlugin;
 
 fn main() {
+    let meta = Meta::default();
     App::new()
         .add_plugins((
             DefaultPlugins
                 .set(WindowPlugin {
                     primary_window: Some(Window {
-                        title: "Bevy 2D RPG".into(),
+                        title: meta.project_name,
                         resolution: (1152, 648).into(),
                         ..default()
                     }),

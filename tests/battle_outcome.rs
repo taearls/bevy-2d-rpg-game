@@ -15,22 +15,20 @@ use bevy::prelude::*;
 use bevy::state::app::StatesPlugin;
 use bevy::time::TimeUpdateStrategy;
 
-use bevy_2d_rpg_game::battle::battle_over_input;
-use bevy_2d_rpg_game::battle::enemy_turn::{EnemyTurnQueue, on_enter_enemy_turn, tick_enemy_turn};
-use bevy_2d_rpg_game::battle::menu::{LogView, MenuSelection, menu_input, on_enter_player_turn};
-use bevy_2d_rpg_game::battle::messages::LogMessage;
-use bevy_2d_rpg_game::battle::rng::DamageRng;
-use bevy_2d_rpg_game::battle::state::{BattleResult, BattleSet, TurnPhase};
-use bevy_2d_rpg_game::battle::targeting::{
+use aliasing::battle::battle_over_input;
+use aliasing::battle::enemy_turn::{EnemyTurnQueue, on_enter_enemy_turn, tick_enemy_turn};
+use aliasing::battle::menu::{LogView, MenuSelection, menu_input, on_enter_player_turn};
+use aliasing::battle::messages::LogMessage;
+use aliasing::battle::rng::DamageRng;
+use aliasing::battle::state::{BattleResult, BattleSet, TurnPhase};
+use aliasing::battle::targeting::{
     SelectedTarget, on_enter_targeting, on_exit_targeting, targeting_input,
 };
-use bevy_2d_rpg_game::combat::events::{AttackRequested, DamageDealt};
-use bevy_2d_rpg_game::combat::resolve::{apply_attacks, check_battle_end, on_died_hide_sprite};
-use bevy_2d_rpg_game::components::{
-    CombatStats, DamageVariance, DisplayName, Enemy, Health, Player,
-};
-use bevy_2d_rpg_game::progress::PlayerProgress;
-use bevy_2d_rpg_game::state::GameState;
+use aliasing::combat::events::{AttackRequested, DamageDealt};
+use aliasing::combat::resolve::{apply_attacks, check_battle_end, on_died_hide_sprite};
+use aliasing::components::{CombatStats, DamageVariance, DisplayName, Enemy, Health, Player};
+use aliasing::progress::PlayerProgress;
+use aliasing::state::GameState;
 
 const STEP: Duration = Duration::from_millis(100);
 

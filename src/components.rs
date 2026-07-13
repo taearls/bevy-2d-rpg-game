@@ -90,9 +90,13 @@ pub struct CombatStats {
 }
 
 /// Per-character multiplicative damage spread. A roll is sampled uniformly from
-/// `[min, max]` each time the character deals damage. Defaults match the Godot
-/// `BattleCharacter` exports (0.8 / 1.2).
-#[derive(Component, Reflect, Debug, Clone, Copy, PartialEq)]
+/// `[min, max]` each time the character deals damage. Seeded from the character
+/// template's `damage_variance` (see [`DamageVarianceDef`]); the `Default`
+/// (0.8 / 1.2) mirrors the Godot `BattleCharacter` exports and is used only as a
+/// non-spawn fallback (e.g. the debug inspector).
+///
+/// [`DamageVarianceDef`]: crate::characters::definition::DamageVarianceDef
+#[derive(Component, Reflect, Debug, Clone, Copy, PartialEq, FromTemplate)]
 #[reflect(Component)]
 pub struct DamageVariance {
     pub min: f32,

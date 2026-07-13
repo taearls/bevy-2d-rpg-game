@@ -15,17 +15,15 @@ use bevy::prelude::*;
 use bevy::scene::ScenePlugin;
 use bevy::state::app::StatesPlugin;
 
-use bevy_2d_rpg_game::battle::menu::{
+use aliasing::battle::menu::{
     ActionMenuPanel, CycleDirection, MenuCursor, MenuLabel, MenuRow, MenuSelection, cycle_index,
     spawn_action_menu,
 };
-use bevy_2d_rpg_game::battle::messages::LogMessage;
-use bevy_2d_rpg_game::battle::state::{BattleSet, TurnPhase};
-use bevy_2d_rpg_game::components::{
-    CombatStats, DamageVariance, Defending, DisplayName, Health, Player,
-};
+use aliasing::battle::messages::LogMessage;
+use aliasing::battle::state::{BattleSet, TurnPhase};
+use aliasing::components::{CombatStats, DamageVariance, Defending, DisplayName, Health, Player};
 
-use bevy_2d_rpg_game::battle::menu::{
+use aliasing::battle::menu::{
     LogView, log_overlay_input, menu_input, on_enter_player_turn, update_menu_highlight,
 };
 

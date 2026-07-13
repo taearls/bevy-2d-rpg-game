@@ -15,12 +15,12 @@ use bevy::prelude::*;
 use bevy::scene::ScenePlugin;
 use bevy::state::app::StatesPlugin;
 
-use bevy_2d_rpg_game::main_menu::{
+use aliasing::main_menu::{
     MainMenuCursor, MainMenuLabel, MainMenuRoot, MainMenuSelection, despawn_main_menu,
     main_menu_input, spawn_main_menu, update_main_menu_highlight,
 };
-use bevy_2d_rpg_game::progress::PlayerProgress;
-use bevy_2d_rpg_game::state::GameState;
+use aliasing::progress::PlayerProgress;
+use aliasing::state::GameState;
 
 /// Build a headless app with the top-level state and main-menu systems wired,
 /// then run one frame so the initial `OnEnter(MainMenu)` spawns the menu and

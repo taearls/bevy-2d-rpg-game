@@ -11,11 +11,9 @@ use bevy::ecs::system::RunSystemOnce;
 use bevy::prelude::*;
 use bevy::scene::ScenePlugin;
 
-use bevy_2d_rpg_game::battle::spawn::{BattleLayout, RosterEntry, spawn_enemies, spawn_player};
-use bevy_2d_rpg_game::characters::definition::{CharacterDef, CombatStatsDef};
-use bevy_2d_rpg_game::components::{
-    CombatStats, DamageVariance, DisplayName, Enemy, Health, Player,
-};
+use aliasing::battle::spawn::{BattleLayout, RosterEntry, spawn_enemies, spawn_player};
+use aliasing::characters::definition::{CharacterDef, CombatStatsDef, DamageVarianceDef};
+use aliasing::components::{CombatStats, DamageVariance, DisplayName, Enemy, Health, Player};
 
 /// Minimal headless world with the asset + scene infrastructure. `AssetServer`
 /// mints texture handles for the `bsn!` `Sprite { image: ... }`, and `ScenePlugin`
@@ -37,6 +35,8 @@ fn goblin_def(max_health: i32, attack: i32, defense: i32) -> CharacterDef {
             attack,
             defense,
         },
+        // Single canonical variance pair, matching the hero and both RON assets.
+        damage_variance: DamageVarianceDef { min: 0.8, max: 1.2 },
     }
 }
 
@@ -70,6 +70,7 @@ fn spawns_one_player_with_template_stats() {
             attack: 12,
             defense: 8,
         },
+        damage_variance: DamageVarianceDef { min: 0.5, max: 1.5 },
     };
 
     app.world_mut()
@@ -81,17 +82,23 @@ fn spawns_one_player_with_template_stats() {
         )
         .unwrap();
 
-    let mut q = app
-        .world_mut()
-        .query_filtered::<(&DisplayName, &Health, &CombatStats, &Transform), With<Player>>();
+    let mut q = app.world_mut().query_filtered::<(
+        &DisplayName,
+        &Health,
+        &CombatStats,
+        &DamageVariance,
+        &Transform,
+    ), With<Player>>();
     let players: Vec<_> = q.iter(app.world()).collect();
     assert_eq!(players.len(), 1);
-    let (name, hp, stats, transform) = players[0];
+    let (name, hp, stats, variance, transform) = players[0];
     assert_eq!(name.0, "Hero");
     assert_eq!(hp.current, 120);
     assert_eq!(hp.max, 120);
     assert_eq!(stats.attack, 12);
     assert_eq!(stats.defense, 8);
+    assert_close(variance.min, 0.5);
+    assert_close(variance.max, 1.5);
     let pos = transform.translation.truncate();
     assert_close(pos.x, layout.player.x);
     assert_close(pos.y, layout.player.y);
@@ -140,13 +147,43 @@ fn spawns_enemies_with_correct_stats_indices_and_spacing() {
         assert_eq!(hp.max, expected[i].def.stats.max_health);
         assert_eq!(stats.attack, expected[i].def.stats.attack);
         assert_eq!(stats.defense, expected[i].def.stats.defense);
-        assert_eq!(**variance, DamageVariance::default());
+        assert_close(variance.min, expected[i].def.damage_variance.min);
+        assert_close(variance.max, expected[i].def.damage_variance.max);
 
         // Horizontal spacing: x = start_x + i * spacing, shared row Y.
         let pos = transform.translation.truncate();
         assert_close(pos.x, -300.0 + i as f32 * 120.0);
         assert_close(pos.y, 40.0);
     }
+}
+
+/// The enemy `bsn!` scene reads `damage_variance` from the def, not from
+/// `DamageVariance::default()`. Proven with a deliberately non-default pair: a
+/// bare `DamageVariance` in the scene would spawn the 0.8/1.2 default and fail
+/// this assertion. (The canonical roster shares the default pair, which can't
+/// distinguish the two on its own — hence this focused case.)
+#[test]
+fn enemy_spawn_reads_damage_variance_from_def() {
+    let mut app = headless_app();
+    let layout = BattleLayout::default();
+    let mut def = goblin_def(80, 10, 4);
+    def.damage_variance = DamageVarianceDef { min: 0.5, max: 1.5 };
+    let entries = vec![entry("Goblin", def)];
+
+    app.world_mut()
+        .run_system_once(
+            move |mut commands: Commands, asset_server: Res<AssetServer>| {
+                spawn_enemies(&mut commands, &asset_server, &layout, &entries);
+            },
+        )
+        .unwrap();
+
+    let mut q = app
+        .world_mut()
+        .query_filtered::<&DamageVariance, With<Enemy>>();
+    let variance = q.single(app.world()).unwrap();
+    assert_close(variance.min, 0.5);
+    assert_close(variance.max, 1.5);
 }
 
 #[test]

@@ -1,7 +1,7 @@
 //! Parity with the Godot `BattleSceneSeedParsingTest`: the pure `parse_seed`
 //! helper and reading a seed file from disk.
 
-use bevy_2d_rpg_game::battle::seed::{parse_seed, read_seed_file_at};
+use aliasing::battle::seed::{parse_seed, read_seed_file_at};
 
 #[test]
 fn parses_a_valid_seed() {

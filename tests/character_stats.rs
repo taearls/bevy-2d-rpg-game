@@ -1,8 +1,8 @@
-//! Parity with the Godot `CharacterStatsTest`: component composition and serde
-//! defaults for the data-driven character templates.
+//! Parity with the Godot `CharacterStatsTest`: component composition and RON
+//! deserialization for the data-driven character templates.
 
-use bevy_2d_rpg_game::characters::definition::{CharacterDef, CombatStatsDef};
-use bevy_2d_rpg_game::components::{CombatStats, DamageVariance, DisplayName, Health};
+use aliasing::characters::definition::{CharacterDef, CombatStatsDef, DamageVarianceDef};
+use aliasing::components::{CombatStats, DamageVariance, DisplayName, Health};
 
 #[test]
 fn health_full_starts_at_max_and_is_alive() {
@@ -43,32 +43,39 @@ fn damage_variance_defaults_match_godot_exports() {
 }
 
 #[test]
-fn combat_stats_def_defaults_are_the_tuned_values() {
-    // `attack`/`defense` mirror the Godot `CombatStats.cs` exports; `max_health`
-    // is tuned down from Godot's 100 to 50 (see `definition.rs` module docs).
-    let stats = CombatStatsDef::default();
-    assert_eq!(stats.max_health, 50);
-    assert_eq!(stats.attack, 10);
-    assert_eq!(stats.defense, 5);
-}
+fn character_def_uses_stat_values() {
+    let test_display_name = "Goblin";
+    let test_sprite = "sprites/enemy.png";
+    let test_attack = 10;
+    let test_max_health = 50;
+    let test_defense = 5;
+    let test_variance_min = 0.8;
+    let test_variance_max = 1.2;
+    let combat_stats_def_str =
+        format!("attack: {test_attack}, max_health: {test_max_health}, defense: {test_defense}");
+    let damage_variance_def_str = format!("min: {test_variance_min}, max: {test_variance_max}");
+    let character_def: CharacterDef = ron::from_str(&format!(
+        r#"(display_name: "{test_display_name}", sprite: "{test_sprite}", stats: ({combat_stats_def_str}), damage_variance: ({damage_variance_def_str}))"#
+    ))
+    .unwrap();
 
-#[test]
-fn character_def_uses_stat_defaults_when_omitted() {
-    // Name and sprite are supplied; stats fall back to 50/10/5.
-    let def: CharacterDef =
-        ron::from_str(r#"(display_name: "Goblin", sprite: "sprites/enemy.png")"#).unwrap();
-    assert_eq!(def.display_name, "Goblin");
-    assert_eq!(def.sprite, "sprites/enemy.png");
-    assert_eq!(def.stats, CombatStatsDef::default());
-}
-
-#[test]
-fn combat_stats_def_fills_missing_fields_individually() {
-    // attack is overridden; max_health and defense keep their defaults.
-    let stats: CombatStatsDef = ron::from_str("(attack: 25)").unwrap();
-    assert_eq!(stats.max_health, 50);
-    assert_eq!(stats.attack, 25);
-    assert_eq!(stats.defense, 5);
+    assert_eq!(character_def.display_name, test_display_name);
+    assert_eq!(character_def.sprite, test_sprite);
+    assert_eq!(
+        character_def.stats,
+        CombatStatsDef {
+            max_health: test_max_health,
+            attack: test_attack,
+            defense: test_defense,
+        }
+    );
+    assert_eq!(
+        character_def.damage_variance,
+        DamageVarianceDef {
+            min: test_variance_min,
+            max: test_variance_max,
+        }
+    );
 }
 
 #[test]
@@ -81,8 +88,37 @@ fn character_def_round_trips_through_ron() {
             attack: 12,
             defense: 8,
         },
+        damage_variance: DamageVarianceDef { min: 0.8, max: 1.2 },
     };
     let serialized = ron::to_string(&original).unwrap();
     let restored: CharacterDef = ron::from_str(&serialized).unwrap();
     assert_eq!(original, restored);
+}
+
+/// The RON assets are the source of truth: with the serde defaults removed, a
+/// template that omits any stat field must now fail to deserialize rather than
+/// silently fall back. This locks in the no-defaults contract.
+#[test]
+fn character_def_rejects_missing_stat_field() {
+    // `attack` is omitted from `stats` — previously it defaulted to 10.
+    let result: Result<CharacterDef, _> = ron::from_str(
+        r#"(display_name: "Goblin", sprite: "sprites/enemy.png", stats: (max_health: 80, defense: 4), damage_variance: (min: 0.8, max: 1.2))"#,
+    );
+    assert!(
+        result.is_err(),
+        "a template missing a stat field must not deserialize now that defaults are gone"
+    );
+}
+
+/// A template omitting the whole `damage_variance` block must also fail — the
+/// new field is required, not defaulted.
+#[test]
+fn character_def_rejects_missing_damage_variance() {
+    let result: Result<CharacterDef, _> = ron::from_str(
+        r#"(display_name: "Goblin", sprite: "sprites/enemy.png", stats: (max_health: 80, attack: 10, defense: 4))"#,
+    );
+    assert!(
+        result.is_err(),
+        "a template missing damage_variance must not deserialize"
+    );
 }

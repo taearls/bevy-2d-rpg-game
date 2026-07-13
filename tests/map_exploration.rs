@@ -13,10 +13,8 @@ use bevy::prelude::*;
 use bevy::state::app::StatesPlugin;
 use bevy::time::TimeUpdateStrategy;
 
-use bevy_2d_rpg_game::map::{
-    EncounterTracker, MapPlayer, MapRng, check_encounter, move_player, setup_map,
-};
-use bevy_2d_rpg_game::state::GameState;
+use aliasing::map::{EncounterTracker, MapPlayer, MapRng, check_encounter, move_player, setup_map};
+use aliasing::state::GameState;
 
 /// A coarse virtual frame; a few of these cover several seconds of walking.
 const STEP: Duration = Duration::from_millis(100);

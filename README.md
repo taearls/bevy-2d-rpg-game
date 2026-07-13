@@ -1,4 +1,4 @@
-# bevy-2d-rpg-game
+# aliasing
 
 A turn-based RPG battle vertical slice built in [Bevy](https://bevyengine.org)
 0.19 — a port of an existing Godot 4.6 / C# game. See

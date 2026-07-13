@@ -1,12 +1,12 @@
 [package]
-name = "bevy-2d-rpg-game"
+name = "aliasing"
 version = "0.1.0"
 edition = "2024"
 description = "Turn-based RPG battle vertical slice — Bevy port of the Godot 4.6 C# original"
 license = "MIT"
 
 [lib]
-name = "bevy_2d_rpg_game"
+name = "aliasing"
 path = "src/lib.rs"
 
 # Bevy with default features OFF, composed from the granular building blocks a

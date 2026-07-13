@@ -96,7 +96,7 @@ The whole chain is `.chain().run_if(in_state(GameState::InBattle))`. `Input` que
 
 ### Data-driven characters
 
-The roster is authored as RON assets in `assets/characters/*.character.ron`, deserialized into `CharacterDef` (`src/characters/definition.rs`) via a custom asset loader. Omitted stat fields fall back to serde defaults (`max_health` 50, `attack` 10, `defense` 5). The roster is preloaded at `Startup`; combatants spawn only when a battle begins, gated by `roster_ready` (all handles loaded) so spawning never races the async asset load. To add/tune a character, edit or add a `.character.ron` file — no Rust changes needed.
+The roster is authored as RON assets in `assets/characters/*.character.ron`, deserialized into `CharacterDef` (`src/characters/definition.rs`) via a custom asset loader. The RON files are the **single source of truth**: there are no serde defaults, so every stat field (`max_health`, `attack`, `defense`) and the `damage_variance` (`min`/`max`) block must be present — a template that omits any field fails to deserialize rather than silently falling back. The roster is preloaded at `Startup`; combatants spawn only when a battle begins, gated by `roster_ready` (all handles loaded) so spawning never races the async asset load. To add/tune a character, edit or add a `.character.ron` file — no Rust changes needed.
 
 ### Cross-battle persistence
 
