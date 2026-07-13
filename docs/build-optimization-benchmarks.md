@@ -4,7 +4,8 @@ Measured comparison of the `.cargo/config.toml` / `Cargo.toml` build settings th
 PR #23 added (mostly commented out), to decide which are worth enabling.
 
 **Machine:** Apple Silicon (`aarch64-apple-darwin`), macOS. Default toolchain
-`stable`, `nightly` also installed. Crate: `bevy-2d-rpg-game` (Bevy 0.18).
+`stable`, `nightly` also installed. Crate: `aliasing` (then named
+`bevy-2d-rpg-game`, Bevy 0.18).
 
 **Method:** `/usr/bin/time -p cargo build`. Three numbers per config:
 

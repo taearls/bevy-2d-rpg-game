@@ -4,9 +4,9 @@
 # Build:  trunk build --release        (outputs to ./dist)
 # Serve:  trunk serve                  (local dev server at 127.0.0.1:8080)
 #
-# The GitHub Pages workflow passes `--public-url /bevy-2d-rpg-game/` so asset
-# URLs resolve under the project page path. Local `trunk serve` uses the
-# default root path, so no override is needed here.
+# The site deploys to Cloudflare Pages, which serves from the domain root, so
+# no `--public-url` path override is needed. Local `trunk serve` likewise uses
+# the default root path.
 
 [build]
 target = "index.html"
